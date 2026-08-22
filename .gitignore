@@ -20,3 +20,4 @@ Thumbs.db
 
 # Trae 临时
 .trae-html-share-packages/
+.vercel

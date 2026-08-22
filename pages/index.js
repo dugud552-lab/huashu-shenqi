@@ -13,8 +13,6 @@ export default function Home() {
   const [copiedId, setCopiedId] = useState(null);
 
   const textareaRef = useRef(null);
-  // 中文输入法（IME）组合状态：拼音未上屏时不更新 state，避免打断输入
-  const isComposingRef = useRef(false);
 
   // 初始化主题
   useEffect(() => {
@@ -120,7 +118,7 @@ export default function Home() {
         <title>大哥维护话术神器 - 私聊高情商回复生成器</title>
         <meta
           name="viewport"
-          content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+          content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
       </Head>
       <header className="header">
@@ -142,21 +140,10 @@ export default function Home() {
       <div className="input-card">
         <textarea
           ref={textareaRef}
-          value={message}
-          onChange={(e) => {
-            // 中文输入法组合期间（拼音未上屏）不更新 state，避免打断输入
-            if (isComposingRef.current) return;
-            setMessage(e.target.value);
-          }}
-          onCompositionStart={() => {
-            isComposingRef.current = true;
-          }}
-          onCompositionEnd={(e) => {
-            isComposingRef.current = false;
-            setMessage(e.target.value);
-          }}
-          placeholder="在这里粘贴大哥发来的私聊消息...&#10;例如：在吗想你了 / 给你转了点心意收一下 / 今天加班好累 / 发张照片看看"
+          defaultValue=""
           maxLength={500}
+          placeholder={"在这里粘贴大哥发来的私聊消息...\n例如：在吗想你了 / 给你转了点心意收一下 / 今天加班好累 / 发张照片看看"}
+          onInput={(e) => setMessage(e.target.value)}
         />
       </div>
 
