@@ -1,0 +1,22 @@
+# 依赖
+node_modules/
+.next/
+out/
+build/
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+
+# 本地环境
+.env
+.env.local
+.env.*.local
+
+# Trae 临时
+.trae-html-share-packages/
