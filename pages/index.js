@@ -302,8 +302,18 @@ export default function Home() {
   };
 
   /* ===== 1v1 大哥原话模式：核心动作 ===== */
-  const handleBroGenerate = () => {
-    if (!broMsg.trim() || broGenerating) return;
+  // ⚠️ msgOverride 解决 React 闭包陷阱：chip 点击时 setBroMsg 还没 re-render，
+  //    旧的 handleBroGenerate 闭包里 broMsg 是空值 → return。
+  //    改为优先用 ref 的 textarea 真实值，兜底 broMsg state，再兜底传入的 override。
+  const getBroMsg = (override) => {
+    if (override && override.trim()) return override.trim();
+    const fromRef = broTextareaRef.current?.value || "";
+    return fromRef.trim() ? fromRef.trim() : broMsg.trim();
+  };
+
+  const handleBroGenerate = (msgOverride) => {
+    const msg = getBroMsg(msgOverride);
+    if (!msg || broGenerating) return;
     setBroGenerating(true);
     setActiveTab(TAB_RESULT);
     setTimeout(() => {
@@ -312,8 +322,8 @@ export default function Home() {
         address: broAddress.trim() || undefined,
         hostName: broHostName.trim() || undefined,
       };
-      const analysis = analyzeBrotherQuote(broMsg, opts);
-      const replies = generateOnePerPersonality(broMsg, opts);
+      const analysis = analyzeBrotherQuote(msg, opts);
+      const replies = generateOnePerPersonality(msg, opts);
       const analysis2 = replies._analysis || analysis;
       setBroAnalysis(analysis2);
       setBroReplies(replies.slice(0, 8));
@@ -322,26 +332,28 @@ export default function Home() {
   };
 
   const handleBroRegenOne = (pk) => {
-    if (!broMsg.trim()) return;
+    const msg = getBroMsg();
+    if (!msg) return;
     const opts = {
       brotherName: broNickname.trim() || undefined,
       address: broAddress.trim() || undefined,
       hostName: broHostName.trim() || undefined,
     };
-    const replies = generateOnePerPersonality(broMsg, opts);
+    const replies = generateOnePerPersonality(msg, opts);
     const fresh = replies.find(r => r.personality === pk);
     if (!fresh) return;
     setBroReplies(prev => prev.map(r => r.personality === pk ? fresh : r));
   };
 
   const handleBroSaveBrother = () => {
-    if (!broMsg.trim() || broReplies.length === 0) return;
+    const msg = getBroMsg();
+    if (!msg || broReplies.length === 0) return;
     const id = "bro_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     const record = {
       id,
       ts: Date.now(),
       nickname: broNickname.trim() || broAnalysis?.suggestAddress || "哥",
-      brotherMessage: broMsg,
+      brotherMessage: msg,
       address: broAddress,
       hostName: broHostName,
       analysis: broAnalysis,
@@ -363,7 +375,7 @@ export default function Home() {
 
   const handleBroExport = (recordOrCurrent) => {
     const text = exportBrotherRecord(recordOrCurrent || {
-      brotherMessage: broMsg,
+      brotherMessage: getBroMsg(),
       nickname: broNickname,
       analysis: broAnalysis,
       replies: broReplies,
@@ -376,7 +388,8 @@ export default function Home() {
     if (broTextareaRef.current) broTextareaRef.current.value = ex.msg;
     setBroReplies([]);
     setBroAnalysis(null);
-    setTimeout(() => handleBroGenerate(), 60);
+    // ⚠️ 直接传 ex.msg，避免闭包陷阱（setBroMsg 还没 re-render 时 broMsg 仍是空）
+    setTimeout(() => handleBroGenerate(ex.msg), 60);
   };
 
   const handleBroDelete = (bid) => {
