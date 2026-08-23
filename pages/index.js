@@ -302,13 +302,16 @@ export default function Home() {
   };
 
   /* ===== 1v1 大哥原话模式：核心动作 ===== */
-  // ⚠️ msgOverride 解决 React 闭包陷阱：chip 点击时 setBroMsg 还没 re-render，
-  //    旧的 handleBroGenerate 闭包里 broMsg 是空值 → return。
-  //    改为优先用 ref 的 textarea 真实值，兜底 broMsg state，再兜底传入的 override。
+  // ⚠️ 直接用 document.querySelector 读取 textarea 值，不依赖 React state/ref
+  //    原因：手机中文输入法(IME)不触发 onInput → state 不更新；
+  //    静态导出 hydration 后 ref 可能未绑定 → 用 DOM API 最可靠
   const getBroMsg = (override) => {
     if (typeof override === "string" && override.trim()) return override.trim();
-    const fromRef = broTextareaRef.current?.value || "";
-    return fromRef.trim() ? fromRef.trim() : broMsg.trim();
+    // 直接从 DOM 读取，最可靠
+    const ta = document.querySelector(".bro-textarea");
+    if (ta && ta.value && ta.value.trim()) return ta.value.trim();
+    // 兜底
+    return broMsg.trim();
   };
 
   const handleBroGenerate = (msgOverride) => {
@@ -317,17 +320,35 @@ export default function Home() {
     setBroGenerating(true);
     setActiveTab(TAB_RESULT);
     setTimeout(() => {
-      const opts = {
-        brotherName: broNickname.trim() || undefined,
-        address: broAddress.trim() || undefined,
-        hostName: broHostName.trim() || undefined,
-      };
-      const analysis = analyzeBrotherQuote(msg, opts);
-      const replies = generateOnePerPersonality(msg, opts);
-      const analysis2 = replies._analysis || analysis;
-      setBroAnalysis(analysis2);
-      setBroReplies(replies.slice(0, 8));
-      setBroGenerating(false);
+      try {
+        const opts = {
+          brotherName: broNickname.trim() || undefined,
+          address: broAddress.trim() || undefined,
+          hostName: broHostName.trim() || undefined,
+        };
+        const analysis = analyzeBrotherQuote(msg, opts);
+        const replies = generateOnePerPersonality(msg, opts);
+        const analysis2 = replies._analysis || analysis;
+        setBroAnalysis(analysis2);
+        setBroReplies(replies.slice(0, 8));
+      } catch (err) {
+        console.error("1v1生成失败:", err);
+        setBroAnalysis({
+          scenarioLabel: "生成失败",
+          brotherType: "—",
+          suggestAddress: "哥",
+          suggestIntensity: "daily",
+          crossLine: false,
+          crossLineType: "",
+          toneLevel: 0,
+          toneTags: [],
+          matchedWords: [],
+          replyHints: ["生成出错了，请清空后重试：" + (err?.message || "未知错误")],
+        });
+        setBroReplies([]);
+      } finally {
+        setBroGenerating(false);
+      }
     }, 450);
   };
 
