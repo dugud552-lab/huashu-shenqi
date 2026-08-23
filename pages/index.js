@@ -306,7 +306,7 @@ export default function Home() {
   //    旧的 handleBroGenerate 闭包里 broMsg 是空值 → return。
   //    改为优先用 ref 的 textarea 真实值，兜底 broMsg state，再兜底传入的 override。
   const getBroMsg = (override) => {
-    if (override && override.trim()) return override.trim();
+    if (typeof override === "string" && override.trim()) return override.trim();
     const fromRef = broTextareaRef.current?.value || "";
     return fromRef.trim() ? fromRef.trim() : broMsg.trim();
   };
@@ -984,7 +984,7 @@ export default function Home() {
           ) : (
             <button
               className="generate-btn docked primary-1v1"
-              onClick={handleBroGenerate}
+              onClick={() => handleBroGenerate()}
               disabled={!broMsg.trim() || broGenerating}
             >
               {broGenerating ? "分析大哥原话中..." : "💬 生成 8 条 1v1 回复"}
@@ -1078,7 +1078,7 @@ export default function Home() {
         {/* 1v1 生成按钮 */}
         <button
           className={"generate-btn bro-generate-btn " + (docked ? "only-desktop" : "")}
-          onClick={handleBroGenerate}
+          onClick={() => handleBroGenerate()}
           disabled={!broMsg.trim() || broGenerating}
         >
           {broGenerating ? "🔍 正在识别原话 + 生成 8 条高情商回复..." : "💬 生成 8 条 1v1 专属回复"}
