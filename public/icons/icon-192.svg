@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="50%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#4c1d95"/>
+    </linearGradient>
+    <radialGradient id="shine" cx="30%" cy="25%" r="60%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="192" height="192" rx="44" fill="url(#g)"/>
+  <rect width="192" height="192" rx="44" fill="url(#shine)"/>
+  <g transform="translate(40 44)">
+    <!-- 心形💝 -->
+    <path d="M56 104 C 20 80, 12 52, 32 36 C 44 26, 54 30, 56 42 C 58 30, 68 26, 80 36 C 100 52, 92 80, 56 104 Z"
+      fill="#ffffff" opacity="0.98"/>
+    <path d="M40 48 Q 50 40, 56 48" stroke="#fde68a" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M50 60 Q 56 55, 64 60" stroke="#fca5a5" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  </g>
+  <!-- 对话气泡 -->
+  <g transform="translate(104 100)">
+    <rect x="0" y="0" width="56" height="40" rx="12" fill="#ffffff"/>
+    <path d="M 10 40 L 22 52 L 24 40 Z" fill="#ffffff"/>
+    <rect x="8" y="12" width="10" height="4" rx="2" fill="#7c3aed"/>
+    <rect x="22" y="12" width="14" height="4" rx="2" fill="#a855f7"/>
+    <rect x="8" y="22" width="26" height="4" rx="2" fill="#c084fc"/>
+  </g>
+</svg>

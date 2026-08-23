@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="50%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#4c1d95"/>
+    </linearGradient>
+    <radialGradient id="shine" cx="30%" cy="22%" r="65%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="118" fill="url(#g)"/>
+  <rect width="512" height="512" rx="118" fill="url(#shine)"/>
+  <!-- 装饰星点 -->
+  <g fill="#ffffff" opacity="0.7">
+    <circle cx="80" cy="90" r="6"/>
+    <circle cx="430" cy="120" r="4"/>
+    <circle cx="400" cy="420" r="5"/>
+    <circle cx="70" cy="420" r="4"/>
+    <circle cx="460" cy="260" r="3"/>
+  </g>
+  <!-- 大心形💝 -->
+  <g transform="translate(108 108)">
+    <path d="M148 276 C 52 212, 28 140, 84 96 C 116 70, 142 82, 148 112 C 154 82, 180 70, 212 96 C 268 140, 244 212, 148 276 Z"
+      fill="#ffffff" opacity="0.98"/>
+    <path d="M108 130 Q 134 108, 148 132" stroke="#fde68a" stroke-width="8" fill="none" stroke-linecap="round"/>
+    <path d="M132 162 Q 148 148, 170 162" stroke="#fca5a5" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M94 178 Q 120 200, 150 210" stroke="#fbcfe8" stroke-width="4" fill="none" stroke-linecap="round"/>
+  </g>
+  <!-- 对话气泡 -->
+  <g transform="translate(276 272)">
+    <rect x="0" y="0" width="150" height="108" rx="32" fill="#ffffff"/>
+    <path d="M 26 108 L 58 140 L 64 108 Z" fill="#ffffff"/>
+    <rect x="22" y="32" width="28" height="10" rx="5" fill="#7c3aed"/>
+    <rect x="58" y="32" width="40" height="10" rx="5" fill="#a855f7"/>
+    <rect x="22" y="58" width="74" height="10" rx="5" fill="#c084fc"/>
+    <rect x="22" y="84" width="56" height="10" rx="5" fill="#a855f7"/>
+  </g>
+</svg>
