@@ -1115,8 +1115,7 @@ function analyzeBrotherQuote(message, opts = {}) {
   const msg = message || "";
 
   // 1) 先走高优先级的正则识别（复用通用引擎，更稳）
-  const scenarioKey = matchScenario(msg);
-  const scenarioLabel = scenarios[scenarioKey]?.label || scenarios[default_scenario].label;
+  let scenarioKey = matchScenario(msg);
 
   // 2) 情绪/越界判定（按顺序跑，最大绝对值优先）
   let toneLevel = 0;
@@ -1129,24 +1128,33 @@ function analyzeBrotherQuote(message, opts = {}) {
     }
   }
 
-  // 3) 越界二次识别：分类
+  // 3) 越界二次识别：分类 + 强制路由到对应场景模板
   let crossLine = false;
   let crossLineType = "";
   if (/借(我|点)?钱|周转|差.{0,4}钱|需要.{0,4}万|需要.{0,4}块|没钱了.{0,10}(给|借|帮)/.test(msg)) {
     crossLine = true; crossLineType = "借钱要钱";
+    scenarioKey = "reject"; // 硬拒绝模板
   } else if (/发.{0,4}(照片|视频|自拍|素颜|胸|腿)|露.{0,3}(脸|肩|腰|胸|腿)|裸|脱|三点|内裤|私(照|密)|看看(你|身材|腿)|视频裸|裸聊/.test(msg)) {
     crossLine = true; crossLineType = "索要私照/视频";
+    scenarioKey = "send_pic"; // 婉拒私照模板
   } else if (/开房|约炮|陪睡|陪夜|一晚上|过夜|床上|做爱|性交/.test(msg)) {
     crossLine = true; crossLineType = "明确约炮/涉黄";
+    scenarioKey = "reject"; // 硬拒绝模板
   } else if (/睡你|睡一下|睡一晚|想睡|要睡|来睡|让我睡/.test(msg)) {
     crossLine = true; crossLineType = "涉黄暗示(睡你类)";
+    scenarioKey = "reject"; // 硬拒绝模板
   } else if (/开价|多少钱|价格|报价|出个价|开多少|包夜|包养|养你/.test(msg) && /睡|陪|约|玩/.test(msg)) {
     crossLine = true; crossLineType = "涉黄交易(开价类)";
+    scenarioKey = "reject"; // 硬拒绝模板
   } else if (/((地址|位置|在哪住|住哪|你家|公司地址|工作地|学校|具体位置).{0,20}(哪|？|\?))|((在哪|地址|位置)发我|给我.{0,4}(地址|位置))/.test(msg)) {
     crossLine = true; crossLineType = "打探地址/个人隐私";
+    scenarioKey = "reject";
   } else if (/微信|加个微信|把你微信|发微信|留个联系|手机号|你电话/.test(msg) && /见面|出来玩|约|私下/.test(msg)) {
     crossLine = true; crossLineType = "急着加私人联系方式(线下邀约)";
+    scenarioKey = "reject";
   }
+
+  const scenarioLabel = scenarios[scenarioKey]?.label || scenarios[default_scenario].label;
 
   // 4) 称呼建议
   let suggestAddress = opts.address || "哥";
