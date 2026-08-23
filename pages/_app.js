@@ -3,22 +3,22 @@ import "../styles/globals.css";
 
 export default function App({ Component, pageProps }) {
   useEffect(() => {
-    if (
-      typeof window !== "undefined" &&
-      "serviceWorker" in navigator &&
-      window.location.protocol !== "file:"
-    ) {
-      // 延迟到首屏加载完毕再注册，不阻塞首屏
-      const onLoad = () => {
-        const base = process.env.NEXT_PUBLIC_BASE_PATH || "";
-        navigator.serviceWorker
-          .register(`${base}/sw.js`, { scope: `${base}/` })
-          .catch(() => {
-            /* 离线功能失败不影响主流程 */
-          });
-      };
-      if (document.readyState === "complete") onLoad();
-      else window.addEventListener("load", onLoad, { once: true });
+    // 主动注销旧版 Service Worker，防止缓存旧 JS 导致更新不生效
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((regs) => {
+          for (const reg of regs) {
+            reg.unregister();
+          }
+        })
+        .catch(() => {});
+      // 清空所有缓存
+      if ("caches" in window) {
+        caches.keys().then((keys) => {
+          for (const k of keys) caches.delete(k);
+        });
+      }
     }
   }, []);
 
