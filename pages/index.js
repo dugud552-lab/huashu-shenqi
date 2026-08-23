@@ -6,9 +6,24 @@ import {
   personalities,
   getStats,
   getScenarioList,
+  analyzeBrotherQuote,
+  generateOnePerPersonality,
+  exportBrotherRecord,
 } from "../lib/generator";
 
 const PERSONALITY_KEYS = Object.keys(personalities);
+
+const BROTHER_EXAMPLES = [
+  { msg: "刚给你刷了个嘉年华 不用谢", hint: "刚刷礼物" },
+  { msg: "我帮你守塔了 血条差点被偷 还好秒了", hint: "PK救场" },
+  { msg: "妹妹 今天我生日 你不祝我生日快乐吗", hint: "大哥生日" },
+  { msg: "给我唱一首后来吧 睡不着 想听你声音", hint: "深夜点歌" },
+  { msg: "美女 发张你的自拍看看 要无美颜的", hint: "要私照（婉拒）" },
+  { msg: "妹妹 最近周转不开 能借我3万块吗", hint: "借钱试探（硬拒）" },
+  { msg: "下播啦 今天谢谢你帮我撑到最后", hint: "下播感谢" },
+  { msg: "我喜欢你 做我女朋友吧 我是认真的", hint: "告白应对" },
+  { msg: "今天被老板骂了 真不想干了 好委屈", hint: "失意安慰" },
+];
 
 const QUICK_EXAMPLES = [
   { msg: "在吗 想你了", hint: "开场" },
@@ -32,6 +47,10 @@ const INTENSITY_LEVELS = [
 const TAB_RESULT = "result";
 const TAB_HISTORY = "history";
 const TAB_FAV = "fav";
+const TAB_BROS = "bros";
+
+const MODE_CLASSIC = "classic";
+const MODE_1V1 = "bro1v1";
 
 function loadJSON(key, fallback) {
   try {
@@ -56,26 +75,46 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState(TAB_RESULT);
   const [history, setHistory] = useState([]);     // [{id, ts, msg, tags, intensity, items:[{label,emoji,scenario,text}]}]
   const [fav, setFav] = useState([]);             // [{id, ts, label, emoji, scenario, text, sourceMsg}]
-  const [docked, setDocked] = useState(false);    // 移动端键盘弹起 → 生成按钮吸底
+  const [docked, setDocked] = useState(false);    // 移动端键盘弹起 → 按钮吸底
   const [panelMode, setPanelMode] = useState("card"); // card(默认) | drawer
+  const [appMode, setAppMode] = useState(MODE_CLASSIC); // classic | bro1v1
+
+  /* ===== 1v1 大哥原话模式相关 state ===== */
+  const [broMsg, setBroMsg] = useState("");
+  const [broNickname, setBroNickname] = useState("");   // 大哥备注（陈总/王哥）
+  const [broAddress, setBroAddress] = useState("哥");   // 想怎么称呼他
+  const [broHostName, setBroHostName] = useState("");   // 主播名（模板替换 {host}）
+  const [broReplies, setBroReplies] = useState([]);     // 8 条 1v1 卡片
+  const [broAnalysis, setBroAnalysis] = useState(null); // 原话深度分析
+  const [broGenerating, setBroGenerating] = useState(false);
+  const [brothers, setBrothers] = useState([]);         // 大哥档案库 localStorage
+  const [broDetailId, setBroDetailId] = useState(null); // 当前点开的大哥档案 id
 
   const textareaRef = useRef(null);
+  const broTextareaRef = useRef(null);
 
   const stats = useMemo(() => getStats(), []);
   const scenarioList = useMemo(() => getScenarioList(), []);
 
-  /* 初始化：主题 / 历史 / 收藏 */
+  /* 初始化：主题 / 历史 / 收藏 / 大哥档案 */
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme");
     if (savedTheme) setTheme(savedTheme);
     setHistory(loadJSON("hh_history", []));
     setFav(loadJSON("hh_fav", []));
+    setBrothers(loadJSON("hh_brothers", []));
+    const savedMode = localStorage.getItem("hh_mode");
+    if (savedMode === MODE_1V1) setAppMode(MODE_1V1);
   }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem("theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem("hh_mode", appMode);
+  }, [appMode]);
 
   /* 移动端键盘弹起监听 → 按钮吸底  */
   useEffect(() => {
@@ -262,6 +301,112 @@ export default function Home() {
     });
   };
 
+  /* ===== 1v1 大哥原话模式：核心动作 ===== */
+  const handleBroGenerate = () => {
+    if (!broMsg.trim() || broGenerating) return;
+    setBroGenerating(true);
+    setActiveTab(TAB_RESULT);
+    setTimeout(() => {
+      const opts = {
+        brotherName: broNickname.trim() || undefined,
+        address: broAddress.trim() || undefined,
+        hostName: broHostName.trim() || undefined,
+      };
+      const analysis = analyzeBrotherQuote(broMsg, opts);
+      const replies = generateOnePerPersonality(broMsg, opts);
+      const analysis2 = replies._analysis || analysis;
+      setBroAnalysis(analysis2);
+      setBroReplies(replies.slice(0, 8));
+      setBroGenerating(false);
+    }, 450);
+  };
+
+  const handleBroRegenOne = (pk) => {
+    if (!broMsg.trim()) return;
+    const opts = {
+      brotherName: broNickname.trim() || undefined,
+      address: broAddress.trim() || undefined,
+      hostName: broHostName.trim() || undefined,
+    };
+    const replies = generateOnePerPersonality(broMsg, opts);
+    const fresh = replies.find(r => r.personality === pk);
+    if (!fresh) return;
+    setBroReplies(prev => prev.map(r => r.personality === pk ? fresh : r));
+  };
+
+  const handleBroSaveBrother = () => {
+    if (!broMsg.trim() || broReplies.length === 0) return;
+    const id = "bro_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const record = {
+      id,
+      ts: Date.now(),
+      nickname: broNickname.trim() || broAnalysis?.suggestAddress || "哥",
+      brotherMessage: broMsg,
+      address: broAddress,
+      hostName: broHostName,
+      analysis: broAnalysis,
+      replies: broReplies.map(r => ({
+        personality: r.personality, label: r.label, emoji: r.emoji,
+        scenario: r.scenario, scenarioKey: r.scenarioKey,
+        intensity: r.intensity, text: r.text, isCrossLineSafe: r.isCrossLineSafe,
+      })),
+    };
+    setBrothers(prev => {
+      const next = [record, ...prev].slice(0, 200); // 最多 200 个大哥档案
+      saveJSON("hh_brothers", next);
+      return next;
+    });
+    setBroDetailId(id);
+    setActiveTab(TAB_BROS);
+    handleCopy(`已保存到【大哥档案】啦，点「📂 大哥档案」Tab 就能看到`,"bro_saved");
+  };
+
+  const handleBroExport = (recordOrCurrent) => {
+    const text = exportBrotherRecord(recordOrCurrent || {
+      brotherMessage: broMsg,
+      nickname: broNickname,
+      analysis: broAnalysis,
+      replies: broReplies,
+    });
+    handleCopy(text, "bro_export_" + Math.random().toString(36).slice(2, 6));
+  };
+
+  const handleBroPickExample = (ex) => {
+    setBroMsg(ex.msg);
+    if (broTextareaRef.current) broTextareaRef.current.value = ex.msg;
+    setBroReplies([]);
+    setBroAnalysis(null);
+    setTimeout(() => handleBroGenerate(), 60);
+  };
+
+  const handleBroDelete = (bid) => {
+    setBrothers(prev => {
+      const next = prev.filter(b => b.id !== bid);
+      saveJSON("hh_brothers", next);
+      return next;
+    });
+    if (broDetailId === bid) setBroDetailId(null);
+  };
+
+  const handleBroRestore = (rec) => {
+    setBroMsg(rec.brotherMessage || "");
+    if (broTextareaRef.current) broTextareaRef.current.value = rec.brotherMessage || "";
+    setBroNickname(rec.nickname || "");
+    setBroAddress(rec.address || "哥");
+    setBroHostName(rec.hostName || "");
+    setBroReplies(rec.replies || []);
+    setBroAnalysis(rec.analysis || null);
+    setBroDetailId(rec.id);
+    setAppMode(MODE_1V1);
+    setActiveTab(TAB_RESULT);
+  };
+
+  const clearBrothers = () => {
+    if (!confirm("确定清空所有大哥档案吗？（不可恢复）")) return;
+    setBrothers([]); saveJSON("hh_brothers", []);
+  };
+
+  const charCountBro = broMsg.length;
   const charCount = message.length;
 
   /* 打字机组件 */
@@ -311,7 +456,32 @@ export default function Home() {
         <p>粘贴大哥发来的消息，选性格，秒生成高情商维护回复</p>
       </div>
 
-      {/* 输入框 */}
+      {/* 🆕 双模式大切换：经典模式 / 1v1 大哥原话 */}
+      <div className="mode-switch" role="tablist" aria-label="工作模式">
+        <button
+          className={"mode-item " + (appMode === MODE_CLASSIC ? "active" : "")}
+          onClick={() => setAppMode(MODE_CLASSIC)}
+          title="传统：写一句你想对大哥说的场景，选性格出回复"
+        >
+          <span className="mode-emoji">🎯</span>
+          <span className="mode-title">经典模式</span>
+          <span className="mode-desc">我出上句 → 你挑风格</span>
+        </button>
+        <button
+          className={"mode-item " + (appMode === MODE_1V1 ? "active" : "")}
+          onClick={() => setAppMode(MODE_1V1)}
+          title="【主力】把大哥原话粘进来 → 自动识别 + 8 个性格一次出 1v1 专属回复 + 建档保存"
+        >
+          <span className="mode-emoji new">💬</span>
+          <span className="mode-title">1v1 大哥原话 <span className="mode-tag new">主播专用</span></span>
+          <span className="mode-desc">大哥说啥粘啥 → 8 种性格一键出</span>
+        </button>
+      </div>
+
+      {/* =========================================================
+          🎯 经典模式（原 UI 保留，用 className wrap 一下，1v1 模式隐藏）
+          ========================================================= */}
+      <div className={"mode-block " + (appMode === MODE_CLASSIC ? "show" : "")}>
       <div className="input-card">
         <textarea
           ref={textareaRef}
@@ -398,10 +568,10 @@ export default function Home() {
         {isGenerating ? "正在生成回复中..." : "✨ 生成回复话术"}
       </button>
 
-      {/* Tabs：结果 / 历史 / 收藏 */}
+      {/* Tabs：结果 / 历史 / 收藏 / 大哥档案 */}
       <div className="tabs">
         <button className={"tab " + (activeTab === TAB_RESULT ? "active" : "")} onClick={() => setActiveTab(TAB_RESULT)}>
-          🎯 结果 <span className="tab-count">{results.length}</span>
+          🎯 结果 <span className="tab-count">{appMode === MODE_1V1 ? broReplies.length : results.length}</span>
         </button>
         <button className={"tab " + (activeTab === TAB_HISTORY ? "active" : "")} onClick={() => setActiveTab(TAB_HISTORY)}>
           🕘 历史 <span className="tab-count">{history.length}</span>
@@ -409,83 +579,188 @@ export default function Home() {
         <button className={"tab " + (activeTab === TAB_FAV ? "active" : "")} onClick={() => setActiveTab(TAB_FAV)}>
           ⭐ 收藏 <span className="tab-count">{fav.length}</span>
         </button>
+        <button className={"tab " + (activeTab === TAB_BROS ? "active" : "")} onClick={() => setActiveTab(TAB_BROS)}>
+          📂 大哥档案 <span className="tab-count">{brothers.length}</span>
+        </button>
       </div>
 
       {/* ===== 结果区 ===== */}
       {activeTab === TAB_RESULT && (
         <div className="results">
-          {results.length > 0 && (
-            <div className="bulk-actions">
-              <button className="bulk-btn primary" onClick={handleCopyAll} disabled={results.length === 0}>
-                📋 一键复制全部（{results.length}条）
-              </button>
-            </div>
+
+          {/* ═══════════════ 1v1 模式：深度分析面板 + 8 张性格卡 ═══════════════ */}
+          {appMode === MODE_1V1 && (
+            <>
+              {broGenerating && (
+                <div className="skeleton-row">
+                  {[0,1,2,3].map(i => (
+                    <div key={i} className="result-card skeleton">
+                      <div className="sk sk-head" /><div className="sk sk-line w-80" />
+                      <div className="sk sk-line w-100" /><div className="sk sk-line w-60" />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!broGenerating && broAnalysis && (
+                <div className={"analysis-card " + (broAnalysis.crossLine ? "danger" : broAnalysis.toneLevel >= 2 ? "hot" : broAnalysis.toneLevel <= -1 ? "cold" : "")}>
+                  <div className="analysis-title">
+                    🧠 原话深度识别
+                    {broAnalysis.crossLine && <span className="analysis-alert">⚠️ 越界预警</span>}
+                  </div>
+                  <div className="analysis-grid">
+                    <div><span className="k">场景命中</span><span className="v">{broAnalysis.scenarioLabel}</span></div>
+                    <div><span className="k">大哥画像</span><span className="v">{broAnalysis.brotherType}</span></div>
+                    <div><span className="k">建议称呼</span><span className="v">{broAnalysis.suggestAddress}</span></div>
+                    <div><span className="k">建议浓度</span><span className="v">{INTENSITY_LEVELS.find(l=>l.key===broAnalysis.suggestIntensity)?.label || broAnalysis.suggestIntensity}</span></div>
+                  </div>
+                  {broAnalysis.matchedWords.length > 0 && (
+                    <div className="analysis-chips">
+                      <span className="chips-label">关键词命中：</span>
+                      {broAnalysis.matchedWords.map(w => <span key={w} className="kw-chip">{w}</span>)}
+                    </div>
+                  )}
+                  {broAnalysis.crossLine && (
+                    <div className="analysis-alert-box">
+                      🚨 越界分类：<strong>{broAnalysis.crossLineType}</strong>
+                      <div>→ 建议优先使用"温柔 / 成熟 / 毒舌"三张卡（✅ 标记的）</div>
+                    </div>
+                  )}
+                  <ul className="analysis-hints">
+                    {broAnalysis.replyHints.slice(0, 5).map((h, i) => <li key={i}>{h}</li>)}
+                  </ul>
+                  <div className="analysis-actions">
+                    <button className="bulk-btn" onClick={() => handleBroSaveBrother()} disabled={broReplies.length === 0}>
+                      💾 保存到大哥档案
+                    </button>
+                    <button className="bulk-btn primary" onClick={() => handleBroExport(null)} disabled={broReplies.length === 0}>
+                      📤 复制整套话术（可分享）
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {!broGenerating && broReplies.length === 0 && broMsg.trim() && (
+                <div className="empty-state"><div>👆 点击「💬 生成 8 条 1v1 回复」按钮</div></div>
+              )}
+              {!broGenerating && broReplies.length === 0 && !broMsg.trim() && (
+                <div className="empty-state"><div>💡 在上面输入框粘贴大哥原话，一键出 8 种性格的回复</div></div>
+              )}
+
+              {/* 8 张 1v1 卡片 */}
+              <div className="bro-grid">
+                {broReplies.map((r, i) => (
+                  <div key={r.personality || i} className={"result-card bro-card " + (r.isCrossLineSafe ? "safe" : "warn-card")}>
+                    <div className="result-header">
+                      <div className="result-personality">
+                        {r.isCrossLineSafe === false && <span className="safe-flag warn" title="越界场景下慎用，容易被误解为给机会">⚠️ 慎用</span>}
+                        {r.isCrossLineSafe && broAnalysis?.crossLine && <span className="safe-flag ok" title="越界场景下优先用这类卡">✅ 推荐</span>}
+                        <span className="personality-dot" />
+                        {r.emoji} {r.label}
+                      </div>
+                      <div className="result-actions">
+                        <button
+                          className="fav-btn"
+                          onClick={() => toggleFav({ ...r, sourceMsg: broMsg, label: r.label, text: r.text, emoji: r.emoji, scenario: r.scenario })}
+                          title="收藏话术"
+                        >{favContains(r) ? "⭐" : "☆"}</button>
+                        <button className="regen-btn" onClick={() => handleBroRegenOne(r.personality)} title="再换一条">🔄 换</button>
+                        <button
+                          className={`copy-btn ${copiedId === "bro_"+r.personality ? "copied" : ""}`}
+                          onClick={() => handleCopy(r.text, "bro_"+r.personality)}
+                        >{copiedId === "bro_"+r.personality ? "已复制 ✓" : "📋 复制"}</button>
+                      </div>
+                    </div>
+                    <div className="scenario-row-card">
+                      <span className="scenario-badge">场景：{r.scenario}</span>
+                      <span className={"intensity-badge i-" + r.intensity}>
+                        浓度：{INTENSITY_LEVELS.find(l => l.key === r.intensity)?.label || r.intensity}
+                      </span>
+                    </div>
+                    <div className="result-text">{r.text}</div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
 
-          {isGenerating && (
-            <div className="skeleton-row">
-              {[0, 1].map(i => (
-                <div key={i} className="result-card skeleton">
-                  <div className="sk sk-head" />
-                  <div className="sk sk-line w-80" />
-                  <div className="sk sk-line w-100" />
-                  <div className="sk sk-line w-60" />
+          {/* ═══════════════ 经典模式：原结果区 ═══════════════ */}
+          {appMode === MODE_CLASSIC && (
+            <>
+              {results.length > 0 && (
+                <div className="bulk-actions">
+                  <button className="bulk-btn primary" onClick={handleCopyAll} disabled={results.length === 0}>
+                    📋 一键复制全部（{results.length}条）
+                  </button>
+                </div>
+              )}
+
+              {isGenerating && (
+                <div className="skeleton-row">
+                  {[0, 1].map(i => (
+                    <div key={i} className="result-card skeleton">
+                      <div className="sk sk-head" />
+                      <div className="sk sk-line w-80" />
+                      <div className="sk sk-line w-100" />
+                      <div className="sk sk-line w-60" />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!isGenerating && results.length === 0 && message.trim() && (
+                <div className="empty-state"><div>👆 点击上方按钮生成回复</div></div>
+              )}
+              {!isGenerating && results.length === 0 && !message.trim() && (
+                <div className="empty-state"><div>💡 先输入消息内容，或者点上方常用话术 chip</div></div>
+              )}
+
+              {results.map((r, i) => (
+                <div key={i} className={"result-card " + (r.isBlend ? "blend" : "")}>
+                  <div className="result-header">
+                    <div className="result-personality">
+                      <span className="personality-dot" />
+                      {r.emoji} {r.label}
+                      {r.isBlend && <span className="blend-tag">混搭</span>}
+                    </div>
+                    <div className="result-actions">
+                      <button
+                        className="fav-btn"
+                        onClick={() => toggleFav(r)}
+                        title={favContains(r) ? "取消收藏" : "收藏话术"}
+                      >
+                        {favContains(r) ? "⭐" : "☆"}
+                      </button>
+                      <button className="regen-btn" onClick={() => handleRegenOne(i)} title="换一条">🔄 换一批</button>
+                      <button
+                        className={`copy-btn ${copiedId === i ? "copied" : ""}`}
+                        onClick={() => handleCopy(r.text, i)}
+                      >
+                        {copiedId === i ? "已复制 ✓" : "📋 复制"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="scenario-row-card">
+                    <span className="scenario-badge">场景：{r.scenario}</span>
+                    <select
+                      className="scenario-select tiny"
+                      value={r.scenarioKey || "__auto__"}
+                      onChange={(e) => handleScenarioChangeForCard(i, e.target.value)}
+                      title="手动换场景重出"
+                    >
+                      <option value={r.scenarioKey || "__auto__"}>切场景 ↓</option>
+                      {scenarioList.map(s => (
+                        <option key={s.key} value={s.key}>→ {s.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <TypewriterText text={r.text} startDelay={i * 120} forceImmediate={false} />
                 </div>
               ))}
-            </div>
+            </>
           )}
-
-          {!isGenerating && results.length === 0 && message.trim() && (
-            <div className="empty-state"><div>👆 点击上方按钮生成回复</div></div>
-          )}
-          {!isGenerating && results.length === 0 && !message.trim() && (
-            <div className="empty-state"><div>💡 先输入消息内容，或者点上方常用话术 chip</div></div>
-          )}
-
-          {results.map((r, i) => (
-            <div key={i} className={"result-card " + (r.isBlend ? "blend" : "")}>
-              <div className="result-header">
-                <div className="result-personality">
-                  <span className="personality-dot" />
-                  {r.emoji} {r.label}
-                  {r.isBlend && <span className="blend-tag">混搭</span>}
-                </div>
-                <div className="result-actions">
-                  <button
-                    className="fav-btn"
-                    onClick={() => toggleFav(r)}
-                    title={favContains(r) ? "取消收藏" : "收藏话术"}
-                  >
-                    {favContains(r) ? "⭐" : "☆"}
-                  </button>
-                  <button className="regen-btn" onClick={() => handleRegenOne(i)} title="换一条">🔄 换一批</button>
-                  <button
-                    className={`copy-btn ${copiedId === i ? "copied" : ""}`}
-                    onClick={() => handleCopy(r.text, i)}
-                  >
-                    {copiedId === i ? "已复制 ✓" : "📋 复制"}
-                  </button>
-                </div>
-              </div>
-
-              <div className="scenario-row-card">
-                <span className="scenario-badge">场景：{r.scenario}</span>
-                <select
-                  className="scenario-select tiny"
-                  value={r.scenarioKey || "__auto__"}
-                  onChange={(e) => handleScenarioChangeForCard(i, e.target.value)}
-                  title="手动换场景重出"
-                >
-                  <option value={r.scenarioKey || "__auto__"}>切场景 ↓</option>
-                  {scenarioList.map(s => (
-                    <option key={s.key} value={s.key}>→ {s.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <TypewriterText text={r.text} startDelay={i * 120} forceImmediate={false} />
-            </div>
-          ))}
         </div>
       )}
 
@@ -592,18 +867,210 @@ export default function Home() {
         </div>
       )}
 
-      {/* 移动端吸底生成按钮（键盘弹起时才出现） */}
-      {docked && (
-        <div className="docked-bar">
-          <button
-            className="generate-btn docked"
-            onClick={handleGenerate}
-            disabled={!message.trim() || selectedTags.length === 0 || isGenerating}
-          >
-            {isGenerating ? "生成中..." : "✨ 生成回复话术"}
-          </button>
+      {/* ===== 📂 大哥档案 Tab ===== */}
+      {activeTab === TAB_BROS && (
+        <div className="panel bros-panel">
+          {brothers.length > 0 && (
+            <div className="panel-actions">
+              <span className="panel-hint">最多 200 条，自动保存在本机（{brothers.length}/200）</span>
+              <button className="link-btn danger" onClick={clearBrothers}>清空档案</button>
+            </div>
+          )}
+          {brothers.length === 0 && (
+            <div className="empty-state">
+              <div>📂 还没有大哥档案</div>
+              <div className="small">切到「💬 1v1 大哥原话」模式，生成一次后点「💾 保存到大哥档案」</div>
+            </div>
+          )}
+          <div className="bros-list">
+            {brothers.map(b => (
+              <div key={b.id} className={"bro-row " + (broDetailId === b.id ? "open" : "")}>
+                <div className="bro-row-head" onClick={() => setBroDetailId(broDetailId === b.id ? null : b.id)}>
+                  <div className="bro-avatar">{(b.nickname || "哥").slice(0,1)}</div>
+                  <div className="bro-main">
+                    <div className="bro-name-row">
+                      <span className="bro-nickname">{b.nickname || "未命名大哥"}</span>
+                      <span className={"bro-type t-" + (b.analysis?.brotherType || "日常打卡型").replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, "")}>
+                        {b.analysis?.brotherType || "—"}
+                      </span>
+                      {b.analysis?.crossLine && <span className="bro-alert">⚠️ 越界</span>}
+                    </div>
+                    <div className="bro-quote">「{b.brotherMessage?.slice(0, 56)}{(b.brotherMessage||"").length > 56 ? "…" : ""}」</div>
+                    <div className="bro-meta">
+                      {new Date(b.ts).toLocaleString("zh-CN", { month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit" })}
+                      <span className="sep">·</span>场景：{b.analysis?.scenarioLabel || "—"}
+                      <span className="sep">·</span>{b.replies?.length || 0} 条回复
+                    </div>
+                  </div>
+                  <div className="bro-caret">{broDetailId === b.id ? "▲" : "▼"}</div>
+                </div>
+                {broDetailId === b.id && (
+                  <div className="bro-detail">
+                    <div className="bro-detail-actions">
+                      <button className="regen-btn" onClick={() => handleBroRestore(b)}>🔁 回到 1v1 模式重调</button>
+                      <button className="copy-btn" onClick={() => handleBroExport(b)}>📤 复制整套</button>
+                      <button className="link-btn danger" onClick={() => handleBroDelete(b.id)}>🗑 删除档案</button>
+                    </div>
+                    <div className="analysis-chips">
+                      <span className="chips-label">关键词：</span>
+                      {(b.analysis?.matchedWords || []).map(w => <span key={w} className="kw-chip">{w}</span>)}
+                      {(b.analysis?.replyHints || []).slice(0, 2).map((h, i) => (
+                        <span key={i} className="hint-chip">💡 {h}</span>
+                      ))}
+                    </div>
+                    <div className="bro-grid">
+                      {(b.replies || []).map((r, i) => (
+                        <div key={r.personality || i} className={"result-card bro-card " + (r.isCrossLineSafe === false ? "warn-card" : r.isCrossLineSafe ? "safe" : "")}>
+                          <div className="result-header">
+                            <div className="result-personality">
+                              <span className="personality-dot" />{r.emoji} {r.label}
+                              {r.isCrossLineSafe === false && <span className="safe-flag warn">⚠️ 慎用</span>}
+                            </div>
+                            <div className="result-actions">
+                              <button className="fav-btn"
+                                onClick={() => toggleFav({
+                                  id: Math.random(), label: r.label, emoji: r.emoji, scenario: r.scenario,
+                                  text: r.text, sourceMsg: b.brotherMessage,
+                                })}
+                              >{favContains({label:r.label, text:r.text}) ? "⭐" : "☆"}</button>
+                              <button
+                                className={`copy-btn ${copiedId === "brosrc_"+b.id+"_"+r.personality ? "copied" : ""}`}
+                                onClick={() => handleCopy(r.text, "brosrc_"+b.id+"_"+r.personality)}
+                              >{copiedId === "brosrc_"+b.id+"_"+r.personality ? "已复制 ✓" : "📋 复制"}</button>
+                            </div>
+                          </div>
+                          <div className="scenario-row-card">
+                            <span className="scenario-badge">场景：{r.scenario}</span>
+                            <span className={"intensity-badge i-" + r.intensity}>
+                              {INTENSITY_LEVELS.find(l => l.key === r.intensity)?.label || r.intensity}
+                            </span>
+                          </div>
+                          <div className="result-text">{r.text}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
+
+      {/* 移动端吸底生成按钮（键盘弹起时才出现）—— 按模式切换 */}
+      {docked && (
+        <div className="docked-bar">
+          {appMode === MODE_CLASSIC ? (
+            <button
+              className="generate-btn docked"
+              onClick={handleGenerate}
+              disabled={!message.trim() || selectedTags.length === 0 || isGenerating}
+            >
+              {isGenerating ? "生成中..." : "✨ 生成回复话术"}
+            </button>
+          ) : (
+            <button
+              className="generate-btn docked primary-1v1"
+              onClick={handleBroGenerate}
+              disabled={!broMsg.trim() || broGenerating}
+            >
+              {broGenerating ? "分析大哥原话中..." : "💬 生成 8 条 1v1 回复"}
+            </button>
+          )}
+        </div>
+      )}
+      </div> {/* ⬅️ 关闭经典模式的 mode-block */}
+
+      {/* =========================================================
+          💬 1v1 大哥原话模式（整个第二大区块，经典模式隐藏时显示它）
+          ========================================================= */}
+      <div className={"mode-block " + (appMode === MODE_1V1 ? "show" : "")}>
+        {/* 大哥原话输入卡 + 元信息 */}
+        <div className="input-card bro-input-card">
+          <div className="bro-input-title">
+            <span className="t-emoji">💬</span>
+            <div>
+              <div className="t-title">大哥原话（微信私聊直接粘贴）</div>
+              <div className="t-sub">系统会自动识别场景 / 画像 / 是否越界 / 该怎么称呼他，然后 8 种性格各出 1 条 1v1 专属回复</div>
+            </div>
+          </div>
+          <textarea
+            ref={broTextareaRef}
+            defaultValue=""
+            maxLength={800}
+            className="bro-textarea"
+            placeholder={"把大哥发给你的原话粘到这里…\n\n例如：\n刚给你刷了个嘉年华 不用谢\n美女 发张自拍看看 要无美颜的\n妹妹 周转不开 能借我 3 万块吗\n我帮你守塔了 血条差点被偷 还好秒了"}
+            onInput={(e) => setBroMsg(e.target.value)}
+          />
+          <div className="input-meta">
+            <button className="clear-btn" onClick={() => {
+              setBroMsg(""); if(broTextareaRef.current) { broTextareaRef.current.value=""; broTextareaRef.current.focus(); }
+            }} disabled={!broMsg}>✕ 清空</button>
+            <div className={"char-counter " + (charCountBro >= 700 ? "warn" : "")}>{charCountBro} / 800</div>
+          </div>
+
+          <div className="bro-meta-row">
+            <label className="bro-meta-item">
+              <span>备注名（大哥昵称）</span>
+              <input
+                type="text"
+                maxLength={16}
+                placeholder="例如：陈总 / 王哥 / 榜一大哥"
+                value={broNickname}
+                onChange={(e) => setBroNickname(e.target.value)}
+              />
+            </label>
+            <label className="bro-meta-item">
+              <span>怎么称呼他</span>
+              <select value={broAddress} onChange={(e) => setBroAddress(e.target.value)}>
+                <option value="哥">哥</option>
+                <option value="宝~">宝~</option>
+                <option value="老板">老板</option>
+                <option value="X总">X总</option>
+                <option value="兄弟">兄弟</option>
+                <option value="亲爱的~">亲爱的~</option>
+              </select>
+            </label>
+            <label className="bro-meta-item">
+              <span>你的主播名（可选）</span>
+              <input
+                type="text"
+                maxLength={12}
+                placeholder="模板里会用 {host}"
+                value={broHostName}
+                onChange={(e) => setBroHostName(e.target.value)}
+              />
+            </label>
+          </div>
+        </div>
+
+        {/* 1v1 常用原话 chips */}
+        <div className="section-label secondary">🎯 真实场景示例，点一下直接生成</div>
+        <div className="quick-chips bro-chips">
+          {BROTHER_EXAMPLES.map(ex => (
+            <button key={ex.msg} className="quick-chip" onClick={() => handleBroPickExample(ex)} title={ex.msg}>
+              <span className="quick-chip-hint">{ex.hint}</span>
+              <span className="quick-chip-text">{ex.msg}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* 说明：8 性格同时出 */}
+        <div className="bro-mode-hint">
+          <span className="hint-title">✅ 一次生成 8 种性格回复</span>
+          <span className="hint-row">温柔体贴 / 高冷傲娇 / 活泼可爱 / 撒娇卖萌 / 幽默搞笑 / 成熟稳重 / 毒舌犀利 / 甜言蜜语</span>
+          <span className="hint-row tips">越界场景自动标记 ⚠️ 慎用卡，推荐用 ✅ 卡</span>
+        </div>
+
+        {/* 1v1 生成按钮 */}
+        <button
+          className={"generate-btn bro-generate-btn " + (docked ? "only-desktop" : "")}
+          onClick={handleBroGenerate}
+          disabled={!broMsg.trim() || broGenerating}
+        >
+          {broGenerating ? "🔍 正在识别原话 + 生成 8 条高情商回复..." : "💬 生成 8 条 1v1 专属回复"}
+        </button>
+      </div>
 
       <footer className="footer">
         大哥维护神器 · 内置{stats.templates.toLocaleString()}
