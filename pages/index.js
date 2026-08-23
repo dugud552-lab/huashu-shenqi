@@ -985,7 +985,7 @@ export default function Home() {
             <button
               className="generate-btn docked primary-1v1"
               onClick={() => handleBroGenerate()}
-              disabled={!broMsg.trim() || broGenerating}
+              disabled={broGenerating}
             >
               {broGenerating ? "分析大哥原话中..." : "💬 生成 8 条 1v1 回复"}
             </button>
@@ -1014,6 +1014,8 @@ export default function Home() {
             className="bro-textarea"
             placeholder={"把大哥发给你的原话粘到这里…\n\n例如：\n刚给你刷了个嘉年华 不用谢\n美女 发张自拍看看 要无美颜的\n妹妹 周转不开 能借我 3 万块吗\n我帮你守塔了 血条差点被偷 还好秒了"}
             onInput={(e) => setBroMsg(e.target.value)}
+            onCompositionEnd={(e) => setBroMsg(e.target.value)}
+            onBlur={(e) => setBroMsg(e.target.value)}
           />
           <div className="input-meta">
             <button className="clear-btn" onClick={() => {
@@ -1079,7 +1081,7 @@ export default function Home() {
         <button
           className={"generate-btn bro-generate-btn " + (docked ? "only-desktop" : "")}
           onClick={() => handleBroGenerate()}
-          disabled={!broMsg.trim() || broGenerating}
+          disabled={broGenerating}
         >
           {broGenerating ? "🔍 正在识别原话 + 生成 8 条高情商回复..." : "💬 生成 8 条 1v1 专属回复"}
         </button>
