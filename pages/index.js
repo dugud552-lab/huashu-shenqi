@@ -219,6 +219,10 @@ export default function Home() {
         const broAnalysis = analyzeBrotherQuote(msg, opts);
         const replies = generateOnePerPersonality(msg, opts);
         const analysisResult = replies._analysis || broAnalysis;
+        // 🧠 记忆：把上下文标签注入到 analysis 中供 UI 使用
+        if (replies._contextualTags) {
+          analysisResult._contextualTags = replies._contextualTags;
+        }
         setAnalysis(analysisResult);
 
         // 如果选了特定性格，只显示选中的；否则显示全部 8 条
@@ -226,6 +230,10 @@ export default function Home() {
           ? replies.filter(r => selectedTags.includes(r.personality))
           : replies;
         const finalResults = filtered.length > 0 ? filtered : replies;
+        // 🧠 记忆：保留 _contextualTags 到最终结果
+        if (replies._contextualTags && !finalResults._contextualTags) {
+          finalResults._contextualTags = replies._contextualTags;
+        }
         setResults(finalResults);
         pushHistory(msg, selectedTags.length > 0 ? selectedTags : PERSONALITY_KEYS, finalResults);
 
@@ -634,11 +642,11 @@ export default function Home() {
                   <span className="tag-value">{analysis.replyDifficulty}</span>
                 </div>
                 {/* 🧠 上下文记忆徽章 */}
-                {results._contextualTags?.hasHistory && (
+                {analysis._contextualTags?.hasHistory && (
                   <div className="tag-pill memory-tag">
                     <span className="tag-icon">🧠</span>
                     <span className="tag-name">记忆</span>
-                    <span className="tag-value">{results._contextualTags.contextCount} 轮</span>
+                    <span className="tag-value">{analysis._contextualTags.contextCount} 轮</span>
                   </div>
                 )}
               </div>
