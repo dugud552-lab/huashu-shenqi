@@ -262,7 +262,7 @@ function makeVariant(tpl, scenarioKey, personalityKey, usedSet) {
 // ============================================================
 // 主流程
 // ============================================================
-const TARGET = 10000;
+const TARGET = 50000;
 const { scenarios, personalities } = data;
 const personalityKeys = Object.keys(personalities);
 const scenarioKeys = Object.keys(scenarios);
@@ -336,7 +336,7 @@ console.log(`扩展后总数：${newTotal}`);
 
 // 如果还差很多，做第二轮（基于新生成的变体继续扩展）
 let round = 2;
-while (newTotal < TARGET && round <= 5) {
+while (newTotal < TARGET && round <= 30) {
   console.log(`\n=== 第 ${round} 轮扩展 ===`);
   let added2 = 0;
   for (const sk of scenarioKeys) {
@@ -348,10 +348,12 @@ while (newTotal < TARGET && round <= 5) {
       const usedSet = new Set(arr);
       const need = Math.max(0, perGroup - arr.length);
       if (need === 0) continue;
+      // 🆕 种子池：每轮扩大种子范围，新增的变体也作种子
       const seeds = [...arr];
       let tries = 0;
       let addedHere = 0;
-      while (addedHere < need && tries < need * 10) {
+      // 提高 tries 上限，50000 条需要更多次尝试
+      while (addedHere < need && tries < need * 20) {
         tries++;
         const seed = pick(seeds);
         const variant = makeVariant(seed, sk, pk, usedSet);
