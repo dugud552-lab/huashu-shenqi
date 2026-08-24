@@ -142,6 +142,33 @@ export default function Home() {
     saveJSON("hh_prefs", prefs);
   }, [selectedTags, intensity, broNickname, broAddress, activeBroId]);
 
+  // 🧠 核心：检测备注名变化 → 自动切换/新建独立会话
+  const prevNicknameRef = useRef("");
+  useEffect(() => {
+    if (!broNickname.trim()) return;
+    const currentNick = broNickname.trim();
+    // 跳过初始化阶段
+    if (!prevNicknameRef.current && !activeBroId) {
+      prevNicknameRef.current = currentNick;
+      return;
+    }
+    // 备注名变了
+    if (prevNicknameRef.current !== currentNick && prevNicknameRef.current) {
+      // 检查是否已存在这个大哥
+      const existing = brothers.find(b => b.nickname === currentNick);
+      if (existing) {
+        // 已存在 → 切换到这个大哥
+        setActiveBroId(existing.id);
+        setBroAddress(existing.address || broAddress);
+      } else {
+        // 不存在 → 清除 activeBroId，等生成时自动创建
+        // 但保留 address 设置
+        setActiveBroId(null);
+      }
+    }
+    prevNicknameRef.current = currentNick;
+  }, [broNickname]);
+
   const pushHistory = useCallback((msg, tags, arr) => {
     const record = {
       id: Date.now() + "" + Math.random().toString(36).slice(2, 6),
@@ -288,7 +315,19 @@ export default function Home() {
     if (!nickname) return;
 
     setBrothers(prev => {
-      const existingIdx = prev.findIndex(b => b.id === activeBroId || b.nickname === nickname);
+      // 🧠 精确匹配：优先用 activeBroId，其次用 nickname
+      let existingIdx = -1;
+      if (activeBroId) {
+        const idx = prev.findIndex(b => b.id === activeBroId);
+        // 确保 nickname 也匹配（防止串会话）
+        if (idx >= 0 && prev[idx].nickname === nickname) {
+          existingIdx = idx;
+        }
+      }
+      // 如果没有 activeBroId 或 nickname 不匹配，按 nickname 查找
+      if (existingIdx < 0) {
+        existingIdx = prev.findIndex(b => b.nickname === nickname);
+      }
       const scenarioKey = analysis?.scenarioKey || "unknown";
       const brotherType = analysis?.brotherType || "unknown";
       const sessionEntry = {
@@ -320,9 +359,7 @@ export default function Home() {
           interactionCount: (existing.interactionCount || 0) + 1,
           address: existing.address || broAddress.trim(),
         };
-        // 自动选中这个大哥
-        if (!activeBroId) setTimeout(() => setActiveBroId(updated.id), 0);
-        else setActiveBroId(existing.id);
+        setActiveBroId(existing.id);
         return prev.map((b, i) => i === existingIdx ? updated : b);
       } else {
         // 新建大哥 + 第一条会话
