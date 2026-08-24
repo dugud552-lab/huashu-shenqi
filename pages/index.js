@@ -468,6 +468,9 @@ export default function Home() {
                 <div><span className="k">画像</span><span className="v">{analysis.brotherType}</span></div>
                 <div><span className="k">浓度</span><span className="v">{INTENSITY_LEVELS.find(l=>l.key===analysis.suggestIntensity)?.label || analysis.suggestIntensity}</span></div>
                 {analysis.crossLine && <div><span className="k">越界</span><span className="v danger-text">{analysis.crossLineType}</span></div>}
+                {analysis.dialect && analysis.dialect.dialect !== "mandarin" && (
+                  <div><span className="k">方言</span><span className="v">{analysis.dialect.emoji} {analysis.dialect.label}</span></div>
+                )}
               </div>
 
               {/* 🆕 高级维度 */}
