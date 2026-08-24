@@ -1968,46 +1968,176 @@ textarea {
 /* =========================================================
    📱 移动端响应式
    ========================================================= */
+
+/* 辅助类：在特定屏幕尺寸隐藏 */
+.hide-sm { display: initial; }
+.hide-xs { display: initial; }
+
+/* 🚀 精简手机端：600px 以下 */
 @media (max-width: 600px) {
-  .container { padding: 16px 12px 96px; }
-  .hero h1 { font-size: 26px; letter-spacing: 1.5px; }
-  .hero p { font-size: 12px; }
-  .logo-text { font-size: 17px; }
-  .sys-status { font-size: 10px; padding: 6px 10px; gap: 6px; }
-  .sys-time { width: 100%; margin-left: 0; text-align: center; }
-  .input-card { padding: 16px; border-radius: 16px; }
-  .input-card textarea { font-size: 15px; min-height: 100px; }
-  .tag { padding: 8px 14px; font-size: 13px; }
-  .generate-btn { padding: 14px; font-size: 16px; }
-  .result-card { padding: 14px; border-radius: 14px; }
-  .result-text { font-size: 14px; }
-  .scenario-row { flex-direction: column; align-items: stretch; }
-  .scenario-select { max-width: none; }
-  .quick-chip { max-width: calc(50% - 4px); }
-  .quick-chip-text { max-width: 130px; }
-  .result-actions { flex-wrap: wrap; }
-  .result-header { flex-direction: column; align-items: flex-start; gap: 8px; }
-  .scenario-row-card { flex-direction: column; align-items: flex-start; }
-  .scenario-select.tiny { max-width: none; width: 100%; }
-  .tab { font-size: 12px; padding: 8px 4px; }
-  .tab-count { padding: 1px 5px; }
-  .seg-item { font-size: 12px; padding: 8px 4px; }
-  .seg-item .seg-emoji { font-size: 16px; }
-  .bulk-actions { justify-content: stretch; }
-  .bulk-btn { width: 100%; }
+  .container { padding: 12px 10px 96px; }
+
+  /* 🟢 状态栏：只留最核心 */
+  .sys-status {
+    font-size: 10px;
+    padding: 5px 8px;
+    gap: 4px;
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+  .sys-status .hide-sm { display: none !important; }
+  .sys-info { white-space: nowrap; }
+
+  /* 🟢 Hero 区精简 */
+  .hero h1 { font-size: 22px; letter-spacing: 1px; margin-bottom: 4px; }
+  .hero p { font-size: 11px; margin: 0; }
+  .hero p::before { display: none; }
+  .hero-sub { display: none; }
+
+  /* 🟢 大哥选择器压缩 */
+  .bro-switcher {
+    padding: 8px 10px;
+    gap: 6px;
+    margin-bottom: 10px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .bro-switcher::-webkit-scrollbar { height: 2px; }
+  .bro-switcher-label {
+    font-size: 11px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .bro-switcher-list {
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+    gap: 6px;
+  }
+  .bro-chip {
+    padding: 4px 10px;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+  .bro-chip-name { max-width: 60px; }
+  .bro-chip-count { display: none; }
+  .bro-chip-expand { display: none; }
+
+  /* 🟢 会话面板紧凑 */
+  .session-panel {
+    padding: 10px;
+    margin-bottom: 10px;
+    max-height: 200px;
+  }
+  .session-header { font-size: 12px; }
+  .session-item { padding: 6px 8px; font-size: 11px; }
+
+  /* 🟢 输入卡片 */
+  .input-card { padding: 12px; border-radius: 14px; }
+  .input-card textarea { font-size: 15px; min-height: 90px; }
+
+  /* 🟢 快捷模板：2列网格 */
+  .quick-chips {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .quick-chip { max-width: none !important; }
+  .quick-chip-text { max-width: none !important; }
+
+  /* 🟢 生成按钮 */
+  .generate-btn { padding: 12px; font-size: 15px; }
+
+  /* 🟢 结果卡片紧凑 */
+  .result-card { padding: 10px 12px; border-radius: 12px; margin-bottom: 10px; }
+  .result-text {
+    font-size: 14px;
+    padding: 4px 6px;
+  }
+  .result-text:hover {
+    padding: 4px 6px;
+  }
+  .result-hint { font-size: 10px; }
+
+  /* 🟢 分析卡片精简 */
+  .analysis-card { padding: 10px 12px; }
+  .analysis-title { font-size: 13px; }
+
+  /* 🟢 标签/徽章缩小 */
+  .tag-pill { padding: 5px 10px; font-size: 11px; }
+  .tag-pill .tag-icon { font-size: 12px; }
+  .tag-pill .tag-value { font-size: 11px; }
+
+  /* 🟢 分段控件紧凑 */
+  .seg-item { font-size: 12px; padding: 6px 2px; }
+  .seg-item .seg-emoji { font-size: 15px; }
+
+  /* 🟢 Tab 紧凑 */
+  .tab { font-size: 12px; padding: 6px 4px; }
+  .tab-count { padding: 1px 4px; font-size: 10px; }
+
+  /* 🟢 批量操作紧凑 */
+  .bulk-actions { gap: 6px; }
+  .bulk-btn { padding: 8px 10px; font-size: 12px; }
+  .bulk-btn.primary { font-size: 13px; }
 }
 
-@media (max-width: 720px) {
-  .bro-grid { grid-template-columns: 1fr; }
-  .analysis-grid { grid-template-columns: repeat(2, 1fr); }
-  .advanced-panel { grid-template-columns: 1fr; }
-  .analysis-title { font-size: 14px; }
-}
+/* 420px 以下：超紧凑模式 */
 @media (max-width: 420px) {
-  .analysis-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
-  .analysis-actions .bulk-btn { width: 100%; }
+  .hide-xs { display: none !important; }
+
+  .container { padding: 10px 8px 90px; }
+
+  /* Hero 区进一步精简 */
+  .hero h1 { font-size: 20px; }
+
+  /* 状态栏极简化 */
+  .sys-status {
+    font-size: 9px;
+    padding: 4px 6px;
+    gap: 3px;
+  }
+  .sys-sep { display: none; }
+
+  /* 快捷模板单行3列 */
+  .quick-chips {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+  .quick-chip {
+    padding: 4px 6px;
+    flex-direction: column;
+    gap: 2px;
+    text-align: center;
+  }
+  .quick-chip-hint { font-size: 9px; }
+  .quick-chip-text { font-size: 11px; }
+
+  /* 结果卡片更紧凑 */
+  .result-card { padding: 8px 10px; margin-bottom: 8px; }
+  .result-text { font-size: 13px; line-height: 1.6; }
+
+  /* 标签缩小 */
+  .tag-pill { padding: 4px 8px; font-size: 10px; }
+  .tag-pill .tag-icon { font-size: 11px; }
+
+  /* 分段控件 */
+  .segmented.compact { grid-template-columns: repeat(2, 1fr); gap: 4px; }
+  .seg-item { padding: 5px 1px; }
+  .seg-item .seg-emoji { font-size: 14px; }
+  .seg-item .seg-label { font-size: 10px; }
+
+  /* 分析面板 */
+  .analysis-grid { grid-template-columns: 1fr 1fr; gap: 4px; }
+
+  /* 按钮紧凑 */
+  .bulk-btn { padding: 7px 8px; font-size: 11px; }
+  .bulk-btn.primary { font-size: 12px; }
+  .bulk-btn { flex: 1; }
+
+  /* 大哥档案紧凑 */
   .bro-detail-actions > button { flex: 1 1 45%; text-align: center; }
-  .bro-row-head { grid-template-columns: 40px 1fr 20px; gap: 10px; padding: 12px; }
-  .bro-avatar { width: 40px; height: 40px; font-size: 16px; border-radius: 12px; }
-  .segmented.compact { grid-template-columns: repeat(2, 1fr); }
+  .bro-row-head { grid-template-columns: 36px 1fr 20px; gap: 8px; padding: 10px; }
+  .bro-avatar { width: 36px; height: 36px; font-size: 14px; border-radius: 10px; }
 }
