@@ -343,12 +343,16 @@ export default function Home() {
         <span className="sys-sep">|</span>
         <span className="sys-info">{stats.scenarios} 场景 · {stats.personalities} 性格</span>
         <span className="sys-sep">|</span>
+        <span className="sys-info">AI质量分 {stats.qualityCoverage}%</span>
+        <span className="sys-sep">|</span>
+        <span className="sys-info">{stats.combinationRules} 组合规则</span>
+        <span className="sys-sep">|</span>
         <span className="sys-time">{now || "--:--:--"}</span>
       </div>
 
       <div className="hero">
         <h1>私聊维护话术生成器</h1>
-        <p>NEURAL ENGINE · 粘贴大哥消息 → 生成 8 种性格高情商回复</p>
+        <p>NEURAL ENGINE · AI质量打分 + 组合规则识别 · 生成 8 种性格高情商回复</p>
       </div>
 
       {/* 输入框 */}
@@ -357,7 +361,7 @@ export default function Home() {
           ref={textareaRef}
           defaultValue=""
           maxLength={800}
-          placeholder={"把大哥发来的消息粘到这里...\n\n例如：\n在吗 想你了\n刚给你刷了个嘉年华\n我想睡你 你开价\n能借我3万块吗\n今天被老板骂了 好累"}
+          placeholder={"把大哥发来的消息粘到这里...\n\n例如：\n在吗 想你了\n刚给你刷了520 想你了\n我想睡你 你开价\n能借我3万块吗\n今天被老板骂了 好累\n点歌 唱一首给我听"}
           onInput={(e) => setMessage(e.target.value)}
           onCompositionEnd={(e) => setMessage(e.target.value)}
           onBlur={(e) => setMessage(e.target.value)}
@@ -756,9 +760,9 @@ export default function Home() {
       )}
 
       <footer className="footer">
-        <div className="footer-line">大哥维护神器 · NEURAL REPLY ENGINE v2.0</div>
+        <div className="footer-line">大哥维护神器 · NEURAL REPLY ENGINE v2.1 · AI质量打分 + 组合规则</div>
         <div className="footer-stats">
-          {stats.templates.toLocaleString()} 模板 · {stats.scenarios} 场景 · {stats.personalities} 性格 · 8 方言
+          {stats.templates.toLocaleString()} 模板 · {stats.highQualityTemplates.toLocaleString()} 高质 · {stats.scenarios} 场景 · {stats.personalities} 性格 · {stats.combinationRules} 规则 · 8 方言
         </div>
       </footer>
     </div>
