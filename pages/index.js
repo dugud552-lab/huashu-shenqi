@@ -874,8 +874,8 @@ export default function Home() {
                     </span>
                   )}
                 </div>
-                <div className="result-text" onClick={() => handleUseTemplate(r.text)} title="点击将此模板填入输入框继续编辑">{r.text}</div>
-                <div className="result-hint">👆 点击模板可填入输入框继续编辑</div>
+                <div className="result-text" onPointerDown={() => handleUseTemplate(r.text)} title="点击将此模板填入输入框继续编辑">{r.text}</div>
+                <div className="result-hint" onPointerDown={() => handleUseTemplate(r.text)}>👆 点击模板可填入输入框继续编辑</div>
               </div>
             ))}
           </div>
