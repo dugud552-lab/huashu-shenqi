@@ -232,8 +232,63 @@ function variantEmoji(tpl, scenarioKey) {
   return tpl.replace(/([。！？!?~]*)$/, "$1 " + e);
 }
 
-// 综合生成变体（确保与原模板不同）
-function makeVariant(tpl, scenarioKey, personalityKey, usedSet) {
+// 🆕 变体 7：前缀添加（称谓 + 缓冲词）
+function variantPrefix(tpl, personalityKey) {
+  if (!rand(0.3)) return tpl;
+  const prefixes = [
+    "嗯~ ", "诶 ", "害 ", "啊 ", "哎呀 ", "嗯嗯 ", "好哒 ", "知道啦 ",
+    "收到 ", "明白 ", "懂了 ", "好嘞 ", "好 ", "嗯呢 ", "知道 ", "了解 ",
+  ];
+  return pick(prefixes) + tpl;
+}
+
+// 🆕 变体 8：后缀添加（关心/感谢尾巴）
+function variantSuffix(tpl, scenarioKey) {
+  if (!rand(0.3)) return tpl;
+  const tails = {
+    gift_thanks: [" 你别太破费了", " 身体要紧啊", " 我都记着呢", " 下次别这样啦"],
+    comfort: [" 别想太多", " 慢慢来", " 我在的", " 别难过啊"],
+    confession: [" 你想清楚再说", " 别冲动", " 慢慢了解嘛", " 不急的"],
+    reject: [" 这事没得商量", " 你别再说这个", " 我说真的", " 别让我为难"],
+    general: [" 你别累着", " 注意身体", " 早休息", " 我先忙去了"],
+  };
+  const pool = tails[scenarioKey] || tails.general;
+  return tpl + pick(pool);
+}
+
+// 🆕 变体 9：句中插入（"对吧""你说呢""嗯"等停顿）
+function variantInsert(tpl) {
+  if (!rand(0.25)) return tpl;
+  const inserts = ["对吧", "你说呢", "嗯", "对吗", "是吧", "呢", "嘛", "啊"];
+  const ins = pick(inserts);
+  // 在第一个逗号后插入
+  if (tpl.includes("，")) {
+    const idx = tpl.indexOf("，");
+    return tpl.slice(0, idx + 1) + ins + "，" + tpl.slice(idx + 1);
+  }
+  return tpl;
+}
+
+// 🆕 变体 10：重复字增强（"嗯嗯"→"嗯嗯嗯"，"哈哈"→"哈哈哈哈"）
+function variantRepeat(tpl) {
+  if (!rand(0.3)) return tpl;
+  const pairs = [
+    ["嗯嗯", "嗯嗯嗯"], ["哈哈", "哈哈哈哈"], ["好", "好好好"],
+    ["谢谢", "谢谢谢谢"], ["收到", "收到收到"], ["在的", "在的在的"],
+    ["哎呀", "哎呀哎呀"], ["宝贝", "宝贝宝贝"],
+  ];
+  let result = tpl;
+  for (const [from, to] of pairs) {
+    if (result.includes(from) && rand(0.4)) {
+      result = result.replace(from, to);
+      break;
+    }
+  }
+  return result;
+}
+
+// 综合生成变体（多重变换叠加，支持 10 万级扩展）
+function makeVariant(tpl, scenarioKey, personalityKey, usedSet, depth = 0) {
   const fns = [
     () => variantSynonym(tpl),
     () => variantReorder(tpl),
@@ -241,9 +296,13 @@ function makeVariant(tpl, scenarioKey, personalityKey, usedSet) {
     () => variantPunct(tpl),
     () => variantMerge(tpl),
     () => variantEmoji(tpl, scenarioKey),
+    () => variantPrefix(tpl, personalityKey),
+    () => variantSuffix(tpl, scenarioKey),
+    () => variantInsert(tpl),
+    () => variantRepeat(tpl),
   ];
-  // 组合 1~2 个变换
-  const n = rand(0.5) ? 1 : 2;
+  // 🆕 10 万级扩展：组合 1~3 个变换（之前是 1~2）
+  const n = rand(0.4) ? (rand(0.5) ? 1 : 2) : 3;
   const picked = shuffle(fns).slice(0, n);
   let result = tpl;
   for (const fn of picked) {
@@ -252,9 +311,11 @@ function makeVariant(tpl, scenarioKey, personalityKey, usedSet) {
   }
   // 确保不与已用模板重复，且与原模板不同
   if (result === tpl || usedSet.has(result)) {
-    // 强制做一次同义词替换
-    result = variantSynonym(result);
-    if (result === tpl || usedSet.has(result)) return null;
+    if (depth < 3) {
+      // 🆕 递归重试，叠加更多变换
+      return makeVariant(result, scenarioKey, personalityKey, usedSet, depth + 1);
+    }
+    return null;
   }
   return result;
 }
@@ -262,7 +323,7 @@ function makeVariant(tpl, scenarioKey, personalityKey, usedSet) {
 // ============================================================
 // 主流程
 // ============================================================
-const TARGET = 50000;
+const TARGET = 100000;
 const { scenarios, personalities } = data;
 const personalityKeys = Object.keys(personalities);
 const scenarioKeys = Object.keys(scenarios);
@@ -279,13 +340,42 @@ console.log(`目标：${TARGET}`);
 console.log(`需要新增：${TARGET - total}`);
 
 // 按场景×性格的"缺口"分配扩展配额
-// 每个场景×性格组目标条数 = ceil(TARGET / 场景数 / 性格数)
 const perGroup = Math.ceil(TARGET / scenarioKeys.length / personalityKeys.length);
 console.log(`每组目标：${perGroup} 条`);
+console.log(`场景数: ${scenarioKeys.length}, 性格数: ${personalityKeys.length}, 组数: ${scenarioKeys.length * personalityKeys.length}`);
 
 let added = 0;
 let skipped = 0;
+const startTime = Date.now();
 
+// 单组扩展函数：从种子池生成变体直到达到 need 条
+function expandGroup(arr, need, sk, pk, usedSet, maxTries) {
+  if (arr.length === 0 || need === 0) return 0;
+  const seeds = [...arr];
+  let tries = 0;
+  let addedHere = 0;
+  // 动态扩展种子池：每 50 条新加的变体也作为种子
+  let seedExpansionCount = 0;
+  while (addedHere < need && tries < maxTries) {
+    tries++;
+    // 种子池每 50 条新增一次扩展，避免种子过少导致枯竭
+    if (addedHere - seedExpansionCount >= 50 && arr.length > seeds.length) {
+      const newSeeds = arr.slice(seeds.length);
+      seeds.push(...newSeeds);
+      seedExpansionCount = addedHere;
+    }
+    const seed = pick(seeds);
+    const variant = makeVariant(seed, sk, pk, usedSet);
+    if (variant && !usedSet.has(variant)) {
+      arr.push(variant);
+      usedSet.add(variant);
+      addedHere++;
+    }
+  }
+  return addedHere;
+}
+
+// 第一轮：基于现有模板做变体
 for (const sk of scenarioKeys) {
   const scenario = scenarios[sk];
   if (!scenario.templates) scenario.templates = {};
@@ -296,35 +386,21 @@ for (const sk of scenarioKeys) {
     const need = Math.max(0, perGroup - arr.length);
     if (need === 0) continue;
 
-    // 基于现有模板做变体（如果现有为空，跳过——不能凭空生成）
     if (arr.length === 0) {
       skipped += need;
       continue;
     }
 
-    const seeds = [...arr];
-    let tries = 0;
-    let addedHere = 0;
-    while (addedHere < need && tries < need * 8) {
-      tries++;
-      // 随机选一个种子模板
-      const seed = pick(seeds);
-      const variant = makeVariant(seed, sk, pk, usedSet);
-      if (variant && !usedSet.has(variant)) {
-        arr.push(variant);
-        usedSet.add(variant);
-        addedHere++;
-      }
-    }
+    const addedHere = expandGroup(arr, need, sk, pk, usedSet, need * 30);
     added += addedHere;
     scenario.templates[pk] = arr;
   }
 }
 
-console.log(`新增：${added} 条`);
+console.log(`第一轮新增：${added} 条（用时 ${((Date.now()-startTime)/1000).toFixed(1)}s）`);
 console.log(`跳过（无种子）：${skipped} 条`);
 
-// 重新统计
+// 统计
 let newTotal = 0;
 for (const sk of scenarioKeys) {
   const tpl = scenarios[sk].templates || {};
@@ -332,12 +408,14 @@ for (const sk of scenarioKeys) {
     newTotal += (tpl[pk] || []).length;
   }
 }
-console.log(`扩展后总数：${newTotal}`);
+console.log(`第一轮后总数：${newTotal}`);
 
-// 如果还差很多，做第二轮（基于新生成的变体继续扩展）
+// 多轮扩展直到达到目标或连续 2 轮无新增
 let round = 2;
-while (newTotal < TARGET && round <= 30) {
-  console.log(`\n=== 第 ${round} 轮扩展 ===`);
+let lastAdded = added;
+let stagnationCount = 0;
+while (newTotal < TARGET && round <= 15) {
+  const roundStart = Date.now();
   let added2 = 0;
   for (const sk of scenarioKeys) {
     const scenario = scenarios[sk];
@@ -348,21 +426,8 @@ while (newTotal < TARGET && round <= 30) {
       const usedSet = new Set(arr);
       const need = Math.max(0, perGroup - arr.length);
       if (need === 0) continue;
-      // 🆕 种子池：每轮扩大种子范围，新增的变体也作种子
-      const seeds = [...arr];
-      let tries = 0;
-      let addedHere = 0;
-      // 提高 tries 上限，50000 条需要更多次尝试
-      while (addedHere < need && tries < need * 20) {
-        tries++;
-        const seed = pick(seeds);
-        const variant = makeVariant(seed, sk, pk, usedSet);
-        if (variant && !usedSet.has(variant)) {
-          arr.push(variant);
-          usedSet.add(variant);
-          addedHere++;
-        }
-      }
+      // 10 万级扩展：maxTries 大幅提高
+      const addedHere = expandGroup(arr, need, sk, pk, usedSet, need * 50);
       added2 += addedHere;
       scenario.templates[pk] = arr;
     }
@@ -374,12 +439,29 @@ while (newTotal < TARGET && round <= 30) {
       newTotal += (tpl[pk] || []).length;
     }
   }
-  console.log(`第 ${round} 轮新增：${added2}，总数：${newTotal}`);
-  if (added2 === 0) break;
+  const roundTime = ((Date.now()-roundStart)/1000).toFixed(1);
+  console.log(`第 ${round} 轮新增：${added2}，总数：${newTotal}，用时 ${roundTime}s`);
+
+  // 检测是否枯竭
+  if (added2 === 0) {
+    stagnationCount++;
+    if (stagnationCount >= 2) {
+      console.log(`⚠️ 连续 2 轮无新增，停止扩展（可能已达到变体组合上限）`);
+      break;
+    }
+  } else {
+    stagnationCount = 0;
+  }
+  if (added2 < lastAdded * 0.1) {
+    console.log(`⚠️ 本轮新增大幅下降（${added2} < ${lastAdded * 0.1}），可能即将枯竭`);
+  }
+  lastAdded = added2;
   round++;
 }
 
-// 写回文件（保留其他字段如 _crossLineSpecific）
+// 写回文件
 fs.writeFileSync(dataPath, JSON.stringify(data, null, 2), "utf8");
-console.log(`\n✅ 扩展完成，最终总数：${newTotal}`);
-console.log(`数据已写回：${dataPath}`);
+console.log(`\n✅ 扩展完成`);
+console.log(`最终总数：${newTotal}`);
+console.log(`总用时：${((Date.now()-startTime)/1000).toFixed(1)}s`);
+console.log(`文件大小：${(fs.statSync(dataPath).size/1024/1024).toFixed(2)} MB`);
