@@ -66,9 +66,10 @@ export default function Home() {
   const [docked, setDocked] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [broNickname, setBroNickname] = useState("");
-  const [broAddress, setBroAddress] = useState("哥");
+  const [broAddress, setBroAddress] = useState("");
   const [brothers, setBrothers] = useState([]);
   const [broDetailId, setBroDetailId] = useState(null);
+  const [now, setNow] = useState(null);
 
   const textareaRef = useRef(null);
 
@@ -81,6 +82,17 @@ export default function Home() {
     setHistory(loadJSON("hh_history", []));
     setFav(loadJSON("hh_fav", []));
     setBrothers(loadJSON("hh_brothers", []));
+  }, []);
+
+  useEffect(() => {
+    const tick = () => {
+      const d = new Date();
+      const p = (n) => String(n).padStart(2, "0");
+      setNow(`${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`);
+    };
+    tick();
+    const t = setInterval(tick, 1000);
+    return () => clearInterval(t);
   }, []);
 
   useEffect(() => {
@@ -293,7 +305,7 @@ export default function Home() {
     setMessage(rec.brotherMessage || "");
     if (textareaRef.current) textareaRef.current.value = rec.brotherMessage || "";
     setBroNickname(rec.nickname || "");
-    setBroAddress(rec.address || "哥");
+    setBroAddress(rec.address || "");
     setResults(rec.replies || []);
     setAnalysis(rec.analysis || null);
     setBroDetailId(rec.id);
@@ -315,7 +327,7 @@ export default function Home() {
 
       <header className="header">
         <div className="logo">
-          <div className="logo-icon">💝</div>
+          <div className="logo-icon">💠</div>
           <span className="logo-text">大哥维护神器</span>
         </div>
         <button className="theme-toggle" onClick={toggleTheme} aria-label="切换主题">
@@ -323,9 +335,20 @@ export default function Home() {
         </button>
       </header>
 
+      <div className="sys-status">
+        <span className="sys-dot" />
+        <span className="sys-text">SYSTEM ONLINE</span>
+        <span className="sys-sep">|</span>
+        <span className="sys-info">模板库 {stats.templates.toLocaleString()}</span>
+        <span className="sys-sep">|</span>
+        <span className="sys-info">{stats.scenarios} 场景 · {stats.personalities} 性格</span>
+        <span className="sys-sep">|</span>
+        <span className="sys-time">{now || "--:--:--"}</span>
+      </div>
+
       <div className="hero">
         <h1>私聊维护话术生成器</h1>
-        <p>粘贴大哥发来的消息 → 一键生成 8 种性格高情商回复</p>
+        <p>NEURAL ENGINE · 粘贴大哥消息 → 生成 8 种性格高情商回复</p>
       </div>
 
       {/* 输入框 */}
@@ -381,13 +404,13 @@ export default function Home() {
         <div className="advanced-panel">
           <label className="bro-meta-item">
             <span>怎么称呼他</span>
-            <select value={broAddress} onChange={(e) => setBroAddress(e.target.value)}>
-              <option value="哥">哥</option>
-              <option value="宝~">宝~</option>
-              <option value="老板">老板</option>
-              <option value="X总">X总</option>
-              <option value="兄弟">兄弟</option>
-            </select>
+            <input
+              type="text"
+              maxLength={12}
+              placeholder="哥 / 宝~ / 老板 / X总 / 兄弟 / 老铁 ..."
+              value={broAddress}
+              onChange={(e) => setBroAddress(e.target.value)}
+            />
           </label>
           <label className="bro-meta-item">
             <span>备注名</span>
@@ -733,7 +756,10 @@ export default function Home() {
       )}
 
       <footer className="footer">
-        大哥维护神器 · {stats.templates.toLocaleString()}条模板 · {stats.scenarios}大场景 · {stats.personalities}种性格
+        <div className="footer-line">大哥维护神器 · NEURAL REPLY ENGINE v2.0</div>
+        <div className="footer-stats">
+          {stats.templates.toLocaleString()} 模板 · {stats.scenarios} 场景 · {stats.personalities} 性格 · 8 方言
+        </div>
       </footer>
     </div>
   );
