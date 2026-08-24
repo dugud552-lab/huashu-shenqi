@@ -423,11 +423,24 @@ export default function Home() {
   };
 
   const handlePickExample = (ex) => {
+    // 🧠 改成：只填入输入框，不自动生成（用户可以编辑后再生成）
     setMessage(ex.msg);
     if (textareaRef.current) textareaRef.current.value = ex.msg;
     setResults([]);
     setAnalysis(null);
-    setTimeout(() => handleGenerate(ex.msg), 60);
+    setActiveTab(TAB_RESULT);
+  };
+
+  // 🧠 点击结果卡片的模板文本 → 填入输入框作为"继续编辑"
+  const handleUseTemplate = (text) => {
+    setMessage(text);
+    if (textareaRef.current) textareaRef.current.value = text;
+    setActiveTab(TAB_RESULT);
+    // 滚动到输入框
+    if (textareaRef.current) {
+      textareaRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      textareaRef.current.focus();
+    }
   };
 
   const handleSaveBrother = () => {
@@ -861,7 +874,8 @@ export default function Home() {
                     </span>
                   )}
                 </div>
-                <div className="result-text">{r.text}</div>
+                <div className="result-text" onClick={() => handleUseTemplate(r.text)} title="点击将此模板填入输入框继续编辑">{r.text}</div>
+                <div className="result-hint">👆 点击模板可填入输入框继续编辑</div>
               </div>
             ))}
           </div>
