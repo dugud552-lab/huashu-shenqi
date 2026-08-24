@@ -69,6 +69,10 @@ export default function Home() {
   const [brothers, setBrothers] = useState([]);
   const [broDetailId, setBroDetailId] = useState(null);
   const [now, setNow] = useState(null);
+  // 🧠 新增：当前选中的大哥（独立会话隔离）
+  const [activeBroId, setActiveBroId] = useState(null);
+  // 🧠 新增：会话历史面板开关
+  const [showSession, setShowSession] = useState(false);
 
   const textareaRef = useRef(null);
 
@@ -87,11 +91,12 @@ export default function Home() {
     if (savedPrefs.intensity) setIntensity(savedPrefs.intensity);
     if (savedPrefs.broNickname) setBroNickname(savedPrefs.broNickname);
     if (savedPrefs.broAddress) setBroAddress(savedPrefs.broAddress);
-    // 🧠 记忆：如果有上次选择的大哥，自动恢复
-    if (savedPrefs.lastBrother) {
-      const bro = loadJSON("hh_brothers", []).find(b => b.nickname === savedPrefs.lastBrother);
+    // 🧠 记忆：恢复上次选中的大哥（独立会话）
+    if (savedPrefs.activeBroId) {
+      setActiveBroId(savedPrefs.activeBroId);
+      const bro = loadJSON("hh_brothers", []).find(b => b.id === savedPrefs.activeBroId);
       if (bro) {
-        setBroNickname(bro.nickname);
+        setBroNickname(bro.nickname || "");
         if (bro.address) setBroAddress(bro.address);
       }
     }
@@ -131,11 +136,11 @@ export default function Home() {
     };
   }, []);
 
-  // 🧠 记忆：自动保存用户偏好（性格/浓度/称呼）
+  // 🧠 记忆：自动保存用户偏好（性格/浓度/称呼/当前大哥）
   useEffect(() => {
-    const prefs = { selectedTags, intensity, broNickname, broAddress };
+    const prefs = { selectedTags, intensity, broNickname, broAddress, activeBroId };
     saveJSON("hh_prefs", prefs);
-  }, [selectedTags, intensity, broNickname, broAddress]);
+  }, [selectedTags, intensity, broNickname, broAddress, activeBroId]);
 
   const pushHistory = useCallback((msg, tags, arr) => {
     const record = {
@@ -188,7 +193,43 @@ export default function Home() {
     return message.trim();
   };
 
-  // 统一生成逻辑
+  // 🧠 选择/创建大哥（独立会话入口）
+  const selectBrother = (broId) => {
+    const bro = brothers.find(b => b.id === broId);
+    if (!bro) return;
+    setActiveBroId(broId);
+    setBroNickname(bro.nickname || "");
+    if (bro.address) setBroAddress(bro.address);
+    // 自动填充历史上下文到输入框下方
+    setShowSession(true);
+  };
+
+  // 🧠 新建大哥
+  const createNewBrother = () => {
+    setActiveBroId(null);
+    setBroNickname("");
+    setBroAddress("");
+    setMessage("");
+    setResults([]);
+    setAnalysis(null);
+    setShowSession(false);
+  };
+
+  // 🧠 获取当前大哥的独立会话历史
+  const getCurrentBroContext = () => {
+    if (!activeBroId) return [];
+    const bro = brothers.find(b => b.id === activeBroId);
+    if (!bro || !bro.sessions) return [];
+    // 返回最近 10 轮该大哥的对话
+    return (bro.sessions || []).slice(0, 10).map(s => ({
+      msg: s.msg,
+      scenario: s.scenario,
+      reply: s.reply,
+      ts: s.ts,
+    }));
+  };
+
+  // 统一生成逻辑（按大哥隔离上下文）
   const handleGenerate = (msgOverride) => {
     const msg = getMsg(msgOverride);
     if (!msg || isGenerating) return;
@@ -198,28 +239,19 @@ export default function Home() {
     setActiveTab(TAB_RESULT);
     setTimeout(() => {
       try {
-        // 🧠 记忆：提取最近的历史对话作为上下文
-        const contextForGenerator = history.slice(0, 10).map(h => ({
-          msg: h.msg,
-          scenario: h.tags ? null : null,
-        }));
-        // 只传有意义的上下文（最近 5 轮）
-        const recentContext = history.slice(0, 5).map(h => ({
-          msg: h.msg,
-          scenario: h.items?.[0]?.scenario || null,
-          ts: h.ts,
-        }));
+        // 🧠 核心：只取当前大哥的会话作为上下文（隔离！）
+        const broContext = getCurrentBroContext();
 
         const opts = {
           brotherName: broNickname.trim() || undefined,
           address: broAddress.trim() || undefined,
           intensity: intensity === "auto" ? undefined : intensity,
-          context: recentContext,
+          context: broContext, // 只传当前大哥的历史
         };
         const broAnalysis = analyzeBrotherQuote(msg, opts);
         const replies = generateOnePerPersonality(msg, opts);
         const analysisResult = replies._analysis || broAnalysis;
-        // 🧠 记忆：把上下文标签注入到 analysis 中供 UI 使用
+        // 🧠 记忆：把上下文标签注入到 analysis 中
         if (replies._contextualTags) {
           analysisResult._contextualTags = replies._contextualTags;
         }
@@ -230,15 +262,17 @@ export default function Home() {
           ? replies.filter(r => selectedTags.includes(r.personality))
           : replies;
         const finalResults = filtered.length > 0 ? filtered : replies;
-        // 🧠 记忆：保留 _contextualTags 到最终结果
+        // 🧠 保留 _contextualTags
         if (replies._contextualTags && !finalResults._contextualTags) {
           finalResults._contextualTags = replies._contextualTags;
         }
         setResults(finalResults);
         pushHistory(msg, selectedTags.length > 0 ? selectedTags : PERSONALITY_KEYS, finalResults);
 
-        // 🧠 记忆：自动更新大哥档案（累积画像）
-        updateBrotherProfile(broNickname, msg, analysisResult, finalResults);
+        // 🧠 核心更新：把这条对话追加到当前大哥的独立会话中
+        const bestReply = finalResults[0]?.text || "";
+        appendBroSession(msg, analysisResult, bestReply);
+
       } catch (err) {
         console.error("生成失败:", err);
         setResults([]);
@@ -248,65 +282,71 @@ export default function Home() {
     }, 380);
   };
 
-  const updateBrotherProfile = (nickname, msg, analysis, results) => {
-    if (!nickname || !nickname.trim()) return;
-    const name = nickname.trim();
+  // 🧠 向当前大哥的会话追加一条记录（独立存储）
+  const appendBroSession = (msg, analysis, reply) => {
+    const nickname = broNickname.trim();
+    if (!nickname) return;
+
     setBrothers(prev => {
-      // 查找是否已有档案
-      const existingIdx = prev.findIndex(b => b.nickname === name);
-      let next;
+      const existingIdx = prev.findIndex(b => b.id === activeBroId || b.nickname === nickname);
+      const scenarioKey = analysis?.scenarioKey || "unknown";
+      const brotherType = analysis?.brotherType || "unknown";
+      const sessionEntry = {
+        id: "s_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 4),
+        msg,
+        reply,
+        scenario: scenarioKey,
+        brotherType,
+        ts: Date.now(),
+      };
+
       if (existingIdx >= 0) {
-        // 更新已有档案：累积场景统计、常用性格等
         const existing = prev[existingIdx];
-        const scenarioKey = analysis?.scenarioKey || "unknown";
-        const brotherType = analysis?.brotherType || "unknown";
-        // 统计场景频率
+        const sessions = [sessionEntry, ...(existing.sessions || [])].slice(0, 100);
+        // 更新统计
         const scenarioStats = { ...(existing.scenarioStats || {}) };
         scenarioStats[scenarioKey] = (scenarioStats[scenarioKey] || 0) + 1;
-        // 统计大哥画像
         const typeStats = { ...(existing.typeStats || {}) };
         typeStats[brotherType] = (typeStats[brotherType] || 0) + 1;
-        // 选择最匹配的性格
-        const topPersonalities = results.slice(0, 3).map(r => r.personality);
+        const topPersonalities = results_ref.current?.slice(0, 3).map(r => r.personality) || [];
         const bestPersonalities = [...new Set([...topPersonalities, ...(existing.bestPersonalities || [])])].slice(0, 5);
-        // 累积消息历史
-        const msgHistory = [
-          { msg, scenario: scenarioKey, ts: Date.now() },
-          ...(existing.msgHistory || []),
-        ].slice(0, 30);
-        // 更新档案
         const updated = {
           ...existing,
+          sessions,
           scenarioStats,
           typeStats,
           bestPersonalities,
-          msgHistory,
           lastInteraction: Date.now(),
           interactionCount: (existing.interactionCount || 0) + 1,
           address: existing.address || broAddress.trim(),
         };
-        next = prev.map((b, i) => i === existingIdx ? updated : b);
+        // 自动选中这个大哥
+        if (!activeBroId) setTimeout(() => setActiveBroId(updated.id), 0);
+        else setActiveBroId(existing.id);
+        return prev.map((b, i) => i === existingIdx ? updated : b);
       } else {
-        // 新建档案
-        const scenarioKey = analysis?.scenarioKey || "unknown";
-        const brotherType = analysis?.brotherType || "unknown";
-        next = [{
+        // 新建大哥 + 第一条会话
+        const newBro = {
           id: "bro_" + Date.now().toString(36),
-          nickname: name,
+          nickname,
           address: broAddress.trim(),
+          sessions: [sessionEntry],
           scenarioStats: { [scenarioKey]: 1 },
           typeStats: { [brotherType]: 1 },
-          bestPersonalities: results.slice(0, 3).map(r => r.personality),
-          msgHistory: [{ msg, scenario: scenarioKey, ts: Date.now() }],
+          bestPersonalities: [],
           lastInteraction: Date.now(),
           interactionCount: 1,
           createdAt: Date.now(),
-        }, ...prev].slice(0, 200);
+        };
+        setTimeout(() => setActiveBroId(newBro.id), 0);
+        return [newBro, ...prev].slice(0, 200);
       }
-      saveJSON("hh_brothers", next);
-      return next;
     });
   };
+
+  // 用一个 ref 缓存最新 results 供 appendBroSession 使用
+  const results_ref = useRef(results);
+  useEffect(() => { results_ref.current = results; }, [results]);
 
   const handleRegenOne = (pk) => {
     const msg = getMsg();
@@ -458,8 +498,75 @@ export default function Home() {
 
       <div className="hero">
         <h1>私聊维护话术生成器</h1>
-        <p>NEURAL ENGINE · AI记忆系统 · 上下文感知 · 8 种性格高情商回复</p>
+        <p>NEURAL ENGINE · AI记忆系统 · 每个大哥独立聊天框 · 上下文感知</p>
       </div>
+
+      {/* 🧠 大哥选择器（独立会话入口） */}
+      <div className="bro-switcher">
+        <div className="bro-switcher-label">🎯 当前大哥</div>
+        <div className="bro-switcher-list">
+          {activeBroId && (() => {
+            const activeBro = brothers.find(b => b.id === activeBroId);
+            if (!activeBro) return null;
+            return (
+              <button className="bro-chip active" onClick={() => setShowSession(!showSession)}>
+                <span className="bro-chip-avatar">{(activeBro.nickname || "哥").slice(0, 1)}</span>
+                <span className="bro-chip-name">{activeBro.nickname || "未命名"}</span>
+                <span className="bro-chip-count">{(activeBro.sessions || []).length} 轮</span>
+                <span className="bro-chip-expand">{showSession ? "▼" : "▶"}</span>
+              </button>
+            );
+          })()}
+          {brothers.filter(b => b.id !== activeBroId).slice(0, 6).map(b => (
+            <button key={b.id} className="bro-chip" onClick={() => selectBrother(b.id)}>
+              <span className="bro-chip-avatar">{(b.nickname || "哥").slice(0, 1)}</span>
+              <span className="bro-chip-name">{b.nickname || "未命名"}</span>
+              <span className="bro-chip-count">{(b.sessions || []).length}</span>
+            </button>
+          ))}
+          <button className="bro-chip new" onClick={createNewBrother}>
+            <span className="bro-chip-avatar">＋</span>
+            <span className="bro-chip-name">新大哥</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 🧠 当前大哥的会话历史面板 */}
+      {showSession && activeBroId && (() => {
+        const bro = brothers.find(b => b.id === activeBroId);
+        if (!bro || !bro.sessions || bro.sessions.length === 0) {
+          return (
+            <div className="session-panel">
+              <div className="session-empty">📭 还没有和这个大哥的对话记录，去生成一条吧~</div>
+            </div>
+          );
+        }
+        return (
+          <div className="session-panel">
+            <div className="session-header">
+              <span>💬 {bro.nickname} 的会话历史 · {bro.sessions.length} 条</span>
+              <button className="link-btn" onClick={() => setShowSession(false)}>收起</button>
+            </div>
+            <div className="session-list">
+              {bro.sessions.slice(0, 20).map(s => (
+                <div key={s.id} className="session-item">
+                  <div className="session-msg">
+                    <span className="session-from">大哥:</span> {s.msg}
+                  </div>
+                  <div className="session-reply">
+                    <span className="session-to">回复:</span> {s.reply?.slice(0, 80)}{s.reply?.length > 80 ? "…" : ""}
+                  </div>
+                  <div className="session-meta">
+                    <span>{s.scenario}</span>
+                    <span>·</span>
+                    <span>{new Date(s.ts).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 输入框 */}
       <div className="input-card">
@@ -902,7 +1009,7 @@ export default function Home() {
       )}
 
       <footer className="footer">
-        <div className="footer-line">大哥维护神器 · NEURAL REPLY ENGINE v2.2 · AI记忆 + 上下文感知</div>
+        <div className="footer-line">大哥维护神器 · NEURAL REPLY ENGINE v2.3 · 每个大哥独立聊天框 · AI 记忆隔离</div>
         <div className="footer-stats">
           {stats.templates.toLocaleString()} 模板 · {stats.highQualityTemplates.toLocaleString()} 高质 · {stats.scenarios} 场景 · {stats.personalities} 性格 · {stats.combinationRules} 规则 · 8 方言
         </div>
