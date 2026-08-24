@@ -1031,130 +1031,53 @@ textarea {
 }
 
 /* =========================================================
-   🆕 双模式切换（经典 / 1v1 大哥原话）
+   🆕 合并模式：高级设置折叠面板
    ========================================================= */
-.mode-switch {
+.advanced-toggle {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin: 14px 0 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px dashed var(--border);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  backdrop-filter: blur(10px);
+}
+.advanced-toggle:hover {
+  color: var(--text-primary);
+  border-color: var(--accent);
+  background: linear-gradient(135deg, rgba(168,85,247,0.08), rgba(236,72,153,0.06));
+}
+.advanced-panel {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  margin: 22px 0 8px;
-}
-.mode-item {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
   padding: 14px 16px;
-  border-radius: 16px;
-  border: 1.5px solid var(--border);
-  background: var(--bg-card);
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: all 0.25s ease;
-  text-align: left;
-}
-.mode-item:hover {
-  border-color: var(--accent);
-  transform: translateY(-1px);
-}
-.mode-item.active {
-  border-color: transparent;
-  background: linear-gradient(135deg, rgba(124,58,237,0.35), rgba(236,72,153,0.35));
-  box-shadow: var(--shadow);
-}
-.mode-emoji {
-  font-size: 22px;
-  line-height: 1;
-  display: inline-block;
-  padding: 4px;
-  border-radius: 10px;
-  background: rgba(168,85,247,0.12);
-}
-.mode-emoji.new {
-  background: linear-gradient(135deg, #fef3c7, #ec4899);
-}
-.mode-title {
-  font-size: 15px;
-  font-weight: 600;
-  margin-top: 2px;
-}
-.mode-tag.new {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 1px 7px;
-  border-radius: 999px;
-  font-size: 10px;
-  color: #fff;
-  background: linear-gradient(135deg, #ef4444, #ec4899);
-  font-weight: 700;
-  letter-spacing: 0.5px;
-}
-.mode-desc {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-/* 双模式区块：不激活的整体收起 */
-.mode-block {
-  display: none;
+  margin-bottom: 16px;
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(124,58,237,0.06), rgba(236,72,153,0.05)),
+    var(--bg-card);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(10px);
   animation: fadeInUp 0.3s ease;
 }
-.mode-block.show { display: block; }
-
-/* =========================================================
-   🆕 1v1 大哥原话：输入卡
-   ========================================================= */
-.bro-input-card {
-  border: 1.5px solid var(--border);
-  background:
-    linear-gradient(135deg, rgba(236,72,153,0.06), rgba(124,58,237,0.06)),
-    var(--bg-card);
-}
-.bro-input-title {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  margin-bottom: 10px;
-}
-.bro-input-title .t-emoji {
-  width: 42px; height: 42px;
-  border-radius: 12px;
-  display: grid; place-items: center;
-  font-size: 22px;
-  background: linear-gradient(135deg, rgba(168,85,247,0.25), rgba(236,72,153,0.25));
-  flex-shrink: 0;
-}
-.bro-input-title .t-title {
-  font-size: 15px; font-weight: 700; color: var(--text-primary);
-}
-.bro-input-title .t-sub {
-  font-size: 12px; color: var(--text-secondary); margin-top: 3px; line-height: 1.5;
-}
-.bro-textarea {
-  min-height: 150px !important;
-  font-size: 15px !important;
-  line-height: 1.65 !important;
-  border-radius: 14px !important;
-}
-
-/* 大哥元信息行 */
-.bro-meta-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 10px;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px dashed var(--border);
-}
-.bro-meta-item {
+.advanced-panel .bro-meta-item {
   display: flex;
   flex-direction: column;
   gap: 6px;
   font-size: 12px;
   color: var(--text-secondary);
 }
-.bro-meta-item input,
-.bro-meta-item select {
+.advanced-panel .bro-meta-item input,
+.advanced-panel .bro-meta-item select {
   padding: 9px 11px;
   border-radius: 10px;
   background: var(--bg-secondary);
@@ -1165,39 +1088,35 @@ textarea {
   transition: border-color 0.2s;
   font-family: inherit;
 }
-.bro-meta-item input:focus,
-.bro-meta-item select:focus {
+.advanced-panel .bro-meta-item input:focus,
+.advanced-panel .bro-meta-item select:focus {
   border-color: var(--accent);
 }
-
-/* 1v1 chips + 说明块 */
-.bro-chips .quick-chip { background: linear-gradient(135deg, rgba(168,85,247,0.12), rgba(236,72,153,0.12)); border-color: rgba(236,72,153,0.3); }
-.bro-mode-hint {
-  margin-top: 14px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background:
-    linear-gradient(135deg, rgba(34,197,94,0.12), rgba(16,185,129,0.08)),
-    var(--bg-card);
-  border: 1px solid rgba(34,197,94,0.25);
+.intensity-row {
+  grid-column: 1 / -1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
 }
-.bro-mode-hint .hint-title { font-size: 13px; font-weight: 700; color: #34d399; }
-.bro-mode-hint .hint-row   { font-size: 12px; color: var(--text-secondary); }
-.bro-mode-hint .hint-row.tips { color: var(--accent-light); margin-top: 4px; }
-
-.bro-generate-btn {
-  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #ec4899 100%) !important;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  box-shadow: 0 12px 36px rgba(236,72,153,0.35), var(--shadow) !important;
+.intensity-row > span { font-weight: 600; }
+.segmented.compact {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding: 4px;
+  margin: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
 }
-.generate-btn.primary-1v1 {
-  background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%) !important;
-  font-weight: 700;
+.segmented.compact .seg-item {
+  padding: 8px 4px;
+  font-size: 12px;
+  border-radius: 8px;
 }
+.segmented.compact .seg-item .seg-emoji { font-size: 15px; }
 
 /* =========================================================
    🆕 1v1：原话深度分析面板
@@ -1429,9 +1348,7 @@ textarea {
 @media (max-width: 720px) {
   .bro-grid { grid-template-columns: 1fr; }
   .analysis-grid { grid-template-columns: repeat(2, 1fr); }
-  .bro-meta-row { grid-template-columns: 1fr; }
-  .mode-switch { grid-template-columns: 1fr; gap: 8px; }
-  .mode-item { padding: 12px; }
+  .advanced-panel { grid-template-columns: 1fr; }
   .analysis-title { font-size: 14px; }
 }
 @media (max-width: 420px) {
@@ -1440,4 +1357,5 @@ textarea {
   .bro-detail-actions > button { flex: 1 1 45%; text-align: center; }
   .bro-row-head { grid-template-columns: 40px 1fr 20px; gap: 10px; padding: 12px; }
   .bro-avatar { width: 40px; height: 40px; font-size: 16px; border-radius: 12px; }
+  .segmented.compact { grid-template-columns: repeat(2, 1fr); }
 }
