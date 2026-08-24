@@ -242,12 +242,16 @@ export default function Home() {
     setShowSession(false);
   };
 
-  // 🧠 获取当前大哥的独立会话历史
+  // 🧠 获取当前大哥的独立会话历史（按 nickname 查找，确保隔离）
   const getCurrentBroContext = () => {
-    if (!activeBroId) return [];
-    const bro = brothers.find(b => b.id === activeBroId);
+    const nickname = broNickname.trim();
+    if (!nickname) return [];
+    // 以 nickname 为准查找（确保即使 activeBroId 未更新也能正确匹配）
+    let bro = brothers.find(b => b.nickname === nickname);
+    if (!bro && activeBroId) {
+      bro = brothers.find(b => b.id === activeBroId);
+    }
     if (!bro || !bro.sessions) return [];
-    // 返回最近 10 轮该大哥的对话
     return (bro.sessions || []).slice(0, 10).map(s => ({
       msg: s.msg,
       scenario: s.scenario,
@@ -309,25 +313,24 @@ export default function Home() {
     }, 380);
   };
 
-  // 🧠 向当前大哥的会话追加一条记录（独立存储）
+  // 🧠 向当前大哥的会话追加一条记录（独立存储，按 nickname 严格隔离）
   const appendBroSession = (msg, analysis, reply) => {
     const nickname = broNickname.trim();
     if (!nickname) return;
 
     setBrothers(prev => {
-      // 🧠 精确匹配：优先用 activeBroId，其次用 nickname
+      // 🧠 严格按 nickname 查找（不依赖 activeBroId，彻底隔离）
       let existingIdx = -1;
-      if (activeBroId) {
-        const idx = prev.findIndex(b => b.id === activeBroId);
-        // 确保 nickname 也匹配（防止串会话）
-        if (idx >= 0 && prev[idx].nickname === nickname) {
-          existingIdx = idx;
+      // 先按 nickname 精确匹配
+      for (let i = 0; i < prev.length; i++) {
+        if (prev[i].nickname === nickname) {
+          existingIdx = i;
+          break;
         }
       }
-      // 如果没有 activeBroId 或 nickname 不匹配，按 nickname 查找
-      if (existingIdx < 0) {
-        existingIdx = prev.findIndex(b => b.nickname === nickname);
-      }
+      // 如果有 activeBroId 且 nickname 也匹配，那就是同一个
+      // 如果 nickname 不匹配但 activeBroId 存在，忽略 activeBroId（以 nickname 为准）
+
       const scenarioKey = analysis?.scenarioKey || "unknown";
       const brotherType = analysis?.brotherType || "unknown";
       const sessionEntry = {
@@ -342,7 +345,6 @@ export default function Home() {
       if (existingIdx >= 0) {
         const existing = prev[existingIdx];
         const sessions = [sessionEntry, ...(existing.sessions || [])].slice(0, 100);
-        // 更新统计
         const scenarioStats = { ...(existing.scenarioStats || {}) };
         scenarioStats[scenarioKey] = (scenarioStats[scenarioKey] || 0) + 1;
         const typeStats = { ...(existing.typeStats || {}) };
@@ -359,10 +361,11 @@ export default function Home() {
           interactionCount: (existing.interactionCount || 0) + 1,
           address: existing.address || broAddress.trim(),
         };
-        setActiveBroId(existing.id);
+        // 更新当前激活的大哥
+        setTimeout(() => setActiveBroId(existing.id), 0);
         return prev.map((b, i) => i === existingIdx ? updated : b);
       } else {
-        // 新建大哥 + 第一条会话
+        // 全新的大哥（nickname 从未出现过）
         const newBro = {
           id: "bro_" + Date.now().toString(36),
           nickname,
