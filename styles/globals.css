@@ -1505,6 +1505,66 @@ textarea {
 .tag-pill.diff-hard   { border-color: rgba(245, 158, 11, 0.5); background: rgba(245, 158, 11, 0.08); }
 .tag-pill.diff-danger { border-color: rgba(239, 68, 68, 0.55); background: rgba(239, 68, 68, 0.12); }
 
+/* 🧠 记忆标签样式 */
+.tag-pill.memory-tag {
+  border-color: rgba(16, 245, 160, 0.5);
+  background: rgba(16, 245, 160, 0.1);
+  animation: memory-pulse 2s ease-in-out infinite;
+}
+@keyframes memory-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 245, 160, 0.3); }
+  50% { box-shadow: 0 0 8px 2px rgba(16, 245, 160, 0.15); }
+}
+
+/* 🧠 大哥记忆画像样式 */
+.bro-memory-section {
+  background: linear-gradient(135deg, rgba(16, 245, 160, 0.06), rgba(99, 102, 241, 0.06));
+  border: 1px solid rgba(16, 245, 160, 0.3);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.bro-memory-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #10f5a0;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+.bro-memory-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.memory-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  font-size: 11px;
+  color: #c7d2fe;
+  font-weight: 600;
+}
+.memory-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-right: 2px;
+}
+.memory-stat {
+  display: inline-flex;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(16, 245, 160, 0.1);
+  border: 1px solid rgba(16, 245, 160, 0.2);
+  font-size: 10px;
+  color: #6ee7b7;
+  font-weight: 600;
+}
+
 /* 立场标签 */
 .stance-badge {
   display: inline-flex;
