@@ -81,6 +81,20 @@ export default function Home() {
     setHistory(loadJSON("hh_history", []));
     setFav(loadJSON("hh_fav", []));
     setBrothers(loadJSON("hh_brothers", []));
+    // 🧠 记忆：加载用户偏好设置
+    const savedPrefs = loadJSON("hh_prefs", {});
+    if (savedPrefs.selectedTags) setSelectedTags(savedPrefs.selectedTags);
+    if (savedPrefs.intensity) setIntensity(savedPrefs.intensity);
+    if (savedPrefs.broNickname) setBroNickname(savedPrefs.broNickname);
+    if (savedPrefs.broAddress) setBroAddress(savedPrefs.broAddress);
+    // 🧠 记忆：如果有上次选择的大哥，自动恢复
+    if (savedPrefs.lastBrother) {
+      const bro = loadJSON("hh_brothers", []).find(b => b.nickname === savedPrefs.lastBrother);
+      if (bro) {
+        setBroNickname(bro.nickname);
+        if (bro.address) setBroAddress(bro.address);
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -116,6 +130,12 @@ export default function Home() {
       }
     };
   }, []);
+
+  // 🧠 记忆：自动保存用户偏好（性格/浓度/称呼）
+  useEffect(() => {
+    const prefs = { selectedTags, intensity, broNickname, broAddress };
+    saveJSON("hh_prefs", prefs);
+  }, [selectedTags, intensity, broNickname, broAddress]);
 
   const pushHistory = useCallback((msg, tags, arr) => {
     const record = {
@@ -178,10 +198,23 @@ export default function Home() {
     setActiveTab(TAB_RESULT);
     setTimeout(() => {
       try {
+        // 🧠 记忆：提取最近的历史对话作为上下文
+        const contextForGenerator = history.slice(0, 10).map(h => ({
+          msg: h.msg,
+          scenario: h.tags ? null : null,
+        }));
+        // 只传有意义的上下文（最近 5 轮）
+        const recentContext = history.slice(0, 5).map(h => ({
+          msg: h.msg,
+          scenario: h.items?.[0]?.scenario || null,
+          ts: h.ts,
+        }));
+
         const opts = {
           brotherName: broNickname.trim() || undefined,
           address: broAddress.trim() || undefined,
           intensity: intensity === "auto" ? undefined : intensity,
+          context: recentContext,
         };
         const broAnalysis = analyzeBrotherQuote(msg, opts);
         const replies = generateOnePerPersonality(msg, opts);
@@ -192,8 +225,12 @@ export default function Home() {
         const filtered = selectedTags.length > 0
           ? replies.filter(r => selectedTags.includes(r.personality))
           : replies;
-        setResults(filtered.length > 0 ? filtered : replies);
-        pushHistory(msg, selectedTags.length > 0 ? selectedTags : PERSONALITY_KEYS, filtered.length > 0 ? filtered : replies);
+        const finalResults = filtered.length > 0 ? filtered : replies;
+        setResults(finalResults);
+        pushHistory(msg, selectedTags.length > 0 ? selectedTags : PERSONALITY_KEYS, finalResults);
+
+        // 🧠 记忆：自动更新大哥档案（累积画像）
+        updateBrotherProfile(broNickname, msg, analysisResult, finalResults);
       } catch (err) {
         console.error("生成失败:", err);
         setResults([]);
@@ -201,6 +238,66 @@ export default function Home() {
         setIsGenerating(false);
       }
     }, 380);
+  };
+
+  const updateBrotherProfile = (nickname, msg, analysis, results) => {
+    if (!nickname || !nickname.trim()) return;
+    const name = nickname.trim();
+    setBrothers(prev => {
+      // 查找是否已有档案
+      const existingIdx = prev.findIndex(b => b.nickname === name);
+      let next;
+      if (existingIdx >= 0) {
+        // 更新已有档案：累积场景统计、常用性格等
+        const existing = prev[existingIdx];
+        const scenarioKey = analysis?.scenarioKey || "unknown";
+        const brotherType = analysis?.brotherType || "unknown";
+        // 统计场景频率
+        const scenarioStats = { ...(existing.scenarioStats || {}) };
+        scenarioStats[scenarioKey] = (scenarioStats[scenarioKey] || 0) + 1;
+        // 统计大哥画像
+        const typeStats = { ...(existing.typeStats || {}) };
+        typeStats[brotherType] = (typeStats[brotherType] || 0) + 1;
+        // 选择最匹配的性格
+        const topPersonalities = results.slice(0, 3).map(r => r.personality);
+        const bestPersonalities = [...new Set([...topPersonalities, ...(existing.bestPersonalities || [])])].slice(0, 5);
+        // 累积消息历史
+        const msgHistory = [
+          { msg, scenario: scenarioKey, ts: Date.now() },
+          ...(existing.msgHistory || []),
+        ].slice(0, 30);
+        // 更新档案
+        const updated = {
+          ...existing,
+          scenarioStats,
+          typeStats,
+          bestPersonalities,
+          msgHistory,
+          lastInteraction: Date.now(),
+          interactionCount: (existing.interactionCount || 0) + 1,
+          address: existing.address || broAddress.trim(),
+        };
+        next = prev.map((b, i) => i === existingIdx ? updated : b);
+      } else {
+        // 新建档案
+        const scenarioKey = analysis?.scenarioKey || "unknown";
+        const brotherType = analysis?.brotherType || "unknown";
+        next = [{
+          id: "bro_" + Date.now().toString(36),
+          nickname: name,
+          address: broAddress.trim(),
+          scenarioStats: { [scenarioKey]: 1 },
+          typeStats: { [brotherType]: 1 },
+          bestPersonalities: results.slice(0, 3).map(r => r.personality),
+          msgHistory: [{ msg, scenario: scenarioKey, ts: Date.now() }],
+          lastInteraction: Date.now(),
+          interactionCount: 1,
+          createdAt: Date.now(),
+        }, ...prev].slice(0, 200);
+      }
+      saveJSON("hh_brothers", next);
+      return next;
+    });
   };
 
   const handleRegenOne = (pk) => {
@@ -346,12 +443,14 @@ export default function Home() {
         <span className="sys-sep">|</span>
         <span className="sys-info">{stats.combinationRules} 组合规则</span>
         <span className="sys-sep">|</span>
+        <span className="sys-info">🧠 记忆 {brothers.length} 大哥</span>
+        <span className="sys-sep">|</span>
         <span className="sys-time">{now || "--:--:--"}</span>
       </div>
 
       <div className="hero">
         <h1>私聊维护话术生成器</h1>
-        <p>NEURAL ENGINE · AI质量打分 + 组合规则识别 · 生成 8 种性格高情商回复</p>
+        <p>NEURAL ENGINE · AI记忆系统 · 上下文感知 · 8 种性格高情商回复</p>
       </div>
 
       {/* 输入框 */}
@@ -534,6 +633,14 @@ export default function Home() {
                   <span className="tag-name">回复难度</span>
                   <span className="tag-value">{analysis.replyDifficulty}</span>
                 </div>
+                {/* 🧠 上下文记忆徽章 */}
+                {results._contextualTags?.hasHistory && (
+                  <div className="tag-pill memory-tag">
+                    <span className="tag-icon">🧠</span>
+                    <span className="tag-name">记忆</span>
+                    <span className="tag-value">{results._contextualTags.contextCount} 轮</span>
+                  </div>
+                )}
               </div>
 
               {analysis.crossLine && (
@@ -716,6 +823,34 @@ export default function Home() {
                 </div>
                 {broDetailId === b.id && (
                   <div className="bro-detail">
+                    {/* 🧠 记忆统计 */}
+                    {(b.interactionCount > 1 || b.scenarioStats) && (
+                      <div className="bro-memory-section">
+                        <div className="bro-memory-title">🧠 AI 记忆画像</div>
+                        <div className="bro-memory-row">
+                          {b.interactionCount && <span className="memory-chip">累计 {b.interactionCount} 次互动</span>}
+                          {b.bestPersonalities && b.bestPersonalities.length > 0 && (
+                            <span className="memory-chip">🎯 常用: {b.bestPersonalities.map(p => personalities[p]?.label || p).join("·")}</span>
+                          )}
+                        </div>
+                        {b.scenarioStats && Object.keys(b.scenarioStats).length > 0 && (
+                          <div className="bro-memory-row">
+                            <span className="memory-label">场景偏好:</span>
+                            {Object.entries(b.scenarioStats).sort((a,b) => b[1]-a[1]).slice(0,5).map(([k,v]) => (
+                              <span key={k} className="memory-stat">{k}×{v}</span>
+                            ))}
+                          </div>
+                        )}
+                        {b.typeStats && Object.keys(b.typeStats).length > 0 && (
+                          <div className="bro-memory-row">
+                            <span className="memory-label">大哥画像:</span>
+                            {Object.entries(b.typeStats).sort((a,b) => b[1]-a[1]).slice(0,3).map(([k,v]) => (
+                              <span key={k} className="memory-stat">{k}×{v}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <div className="bro-detail-actions">
                       <button className="regen-btn" onClick={() => handleBroRestore(b)}>🔁 重调</button>
                       <button className="copy-btn" onClick={() => handleCopy(exportBrotherRecord(b), "bro_ex_"+b.id)}>📤 复制</button>
@@ -759,7 +894,7 @@ export default function Home() {
       )}
 
       <footer className="footer">
-        <div className="footer-line">大哥维护神器 · NEURAL REPLY ENGINE v2.1 · AI质量打分 + 组合规则</div>
+        <div className="footer-line">大哥维护神器 · NEURAL REPLY ENGINE v2.2 · AI记忆 + 上下文感知</div>
         <div className="footer-stats">
           {stats.templates.toLocaleString()} 模板 · {stats.highQualityTemplates.toLocaleString()} 高质 · {stats.scenarios} 场景 · {stats.personalities} 性格 · {stats.combinationRules} 规则 · 8 方言
         </div>
