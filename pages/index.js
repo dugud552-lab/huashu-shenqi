@@ -19,7 +19,6 @@ const ALL_EXAMPLES = [
   { msg: "我喜欢你 做我女朋友吧", hint: "告白" },
   { msg: "发张照片看看呗", hint: "越界" },
   { msg: "今天加班好累啊", hint: "安慰" },
-  { msg: "我想睡你 你开价", hint: "越界" },
   { msg: "能借我3万块吗 周转不开", hint: "借钱" },
   { msg: "我帮你守塔了 血条差点被偷", hint: "PK" },
   { msg: "今天我生日 你不祝我吗", hint: "生日" },
@@ -361,7 +360,7 @@ export default function Home() {
           ref={textareaRef}
           defaultValue=""
           maxLength={800}
-          placeholder={"把大哥发来的消息粘到这里...\n\n例如：\n在吗 想你了\n刚给你刷了520 想你了\n我想睡你 你开价\n能借我3万块吗\n今天被老板骂了 好累\n点歌 唱一首给我听"}
+          placeholder={"把大哥发来的消息粘到这里...\n\n例如：\n在吗 想你了\n刚给你刷了520 想你了\n能借我3万块吗\n今天被老板骂了 好累\n点歌 唱一首给我听"}
           onInput={(e) => setMessage(e.target.value)}
           onCompositionEnd={(e) => setMessage(e.target.value)}
           onBlur={(e) => setMessage(e.target.value)}
