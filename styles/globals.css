@@ -303,6 +303,166 @@ textarea {
 .hero p::before { content: "// "; color: var(--neon-cyan); opacity: 0.6; }
 
 /* =========================================================
+   🧠 大哥选择器（独立会话隔离）
+   ========================================================= */
+.bro-switcher {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(16, 245, 160, 0.08));
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.bro-switcher-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #a78bfa;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+.bro-switcher-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+.bro-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: rgba(13, 18, 48, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.bro-chip:hover {
+  border-color: var(--neon-purple);
+  background: rgba(168, 85, 247, 0.15);
+  transform: translateY(-1px);
+}
+.bro-chip.active {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.3), rgba(99, 102, 241, 0.25));
+  border-color: var(--neon-purple);
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
+  color: #e9d5ff;
+}
+.bro-chip.new {
+  border-style: dashed;
+  border-color: rgba(16, 245, 160, 0.4);
+  color: #10f5a0;
+}
+.bro-chip.new:hover {
+  background: rgba(16, 245, 160, 0.1);
+  border-color: var(--neon-green);
+}
+.bro-chip-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.bro-chip.new .bro-chip-avatar {
+  background: linear-gradient(135deg, #10f5a0, #06b6d4);
+}
+.bro-chip-name {
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bro-chip-count {
+  font-size: 10px;
+  color: var(--text-secondary);
+  background: rgba(148, 163, 184, 0.15);
+  padding: 1px 5px;
+  border-radius: 8px;
+}
+.bro-chip-expand {
+  font-size: 9px;
+  color: var(--text-secondary);
+}
+
+/* =========================================================
+   💬 会话历史面板
+   ========================================================= */
+.session-panel {
+  background: rgba(13, 18, 48, 0.85);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.session-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #c7d2fe;
+}
+.session-empty {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+  padding: 20px;
+}
+.session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.session-item {
+  background: rgba(10, 14, 39, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.session-msg {
+  color: #fca5a5;
+  margin-bottom: 4px;
+}
+.session-msg .session-from {
+  color: #f87171;
+  font-weight: 700;
+  margin-right: 4px;
+}
+.session-reply {
+  color: #6ee7b7;
+  margin-bottom: 4px;
+}
+.session-reply .session-to {
+  color: #10f5a0;
+  font-weight: 700;
+  margin-right: 4px;
+}
+.session-meta {
+  font-size: 10px;
+  color: var(--text-secondary);
+  display: flex;
+  gap: 4px;
+}
+
+/* =========================================================
    📥 输入卡片（带科技角标）
    ========================================================= */
 .input-card {
