@@ -449,15 +449,64 @@ export default function Home() {
           {!isGenerating && analysis && (
             <div className={"analysis-card " + (analysis.crossLine ? "danger" : analysis.toneLevel >= 2 ? "hot" : analysis.toneLevel <= -1 ? "cold" : "")}>
               <div className="analysis-title">
-                🧠 原话识别
+                <span className="analysis-icon">🧠</span>
+                <span>原话深度识别</span>
                 {analysis.crossLine && <span className="analysis-alert">⚠️ 越界预警</span>}
               </div>
+
+              {/* 意图总结 */}
+              {analysis.intent && (
+                <div className="analysis-intent">
+                  <span className="intent-label">意图</span>
+                  <span className="intent-text">{analysis.intent}</span>
+                </div>
+              )}
+
+              {/* 核心维度 */}
               <div className="analysis-grid">
                 <div><span className="k">场景</span><span className="v">{analysis.scenarioLabel}</span></div>
                 <div><span className="k">画像</span><span className="v">{analysis.brotherType}</span></div>
                 <div><span className="k">浓度</span><span className="v">{INTENSITY_LEVELS.find(l=>l.key===analysis.suggestIntensity)?.label || analysis.suggestIntensity}</span></div>
-                {analysis.crossLine && <div><span className="k">越界</span><span className="v">{analysis.crossLineType}</span></div>}
+                {analysis.crossLine && <div><span className="k">越界</span><span className="v danger-text">{analysis.crossLineType}</span></div>}
               </div>
+
+              {/* 🆕 高级维度 */}
+              <div className="analysis-metrics">
+                <div className="metric-item">
+                  <span className="metric-label">情绪强度</span>
+                  <div className="metric-bar">
+                    <div className="metric-fill" style={{width: `${analysis.emotionIntensity}%`, background: analysis.emotionIntensity >= 70 ? "linear-gradient(90deg,#f59e0b,#ef4444)" : "linear-gradient(90deg,#a855f7,#ec4899)"}} />
+                    <span className="metric-value">{analysis.emotionIntensity}</span>
+                  </div>
+                </div>
+                <div className="metric-item">
+                  <span className="metric-label">风险评分</span>
+                  <div className="metric-bar">
+                    <div className="metric-fill" style={{width: `${analysis.riskScore}%`, background: analysis.riskScore >= 70 ? "linear-gradient(90deg,#ef4444,#dc2626)" : analysis.riskScore >= 40 ? "linear-gradient(90deg,#f59e0b,#ef4444)" : "linear-gradient(90deg,#10b981,#059669)"}} />
+                    <span className="metric-value">{analysis.riskScore}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 🆕 阶段/消费力/难度 */}
+              <div className="analysis-tags-row">
+                <div className={`tag-pill stage-${analysis.interactStage}`}>
+                  <span className="tag-icon">🎯</span>
+                  <span className="tag-name">互动阶段</span>
+                  <span className="tag-value">{analysis.interactStage}</span>
+                </div>
+                <div className={`tag-pill power-${analysis.spendingPower === '超高' ? 'top' : analysis.spendingPower === '高' ? 'high' : analysis.spendingPower === '低' ? 'low' : 'mid'}`}>
+                  <span className="tag-icon">💎</span>
+                  <span className="tag-name">消费力</span>
+                  <span className="tag-value">{analysis.spendingPower}</span>
+                </div>
+                <div className={`tag-pill diff-${analysis.replyDifficulty === '高危' ? 'danger' : analysis.replyDifficulty === '困难' ? 'hard' : analysis.replyDifficulty === '简单' ? 'easy' : 'mid'}`}>
+                  <span className="tag-icon">⚡</span>
+                  <span className="tag-name">回复难度</span>
+                  <span className="tag-value">{analysis.replyDifficulty}</span>
+                </div>
+              </div>
+
               {analysis.crossLine && (
                 <div className="analysis-alert-box">
                   🚨 建议优先使用 ✅ 标记的性格卡，慎用 ⚠️ 标记的
@@ -465,7 +514,7 @@ export default function Home() {
               )}
               {analysis.replyHints && analysis.replyHints.length > 0 && (
                 <ul className="analysis-hints">
-                  {analysis.replyHints.slice(0, 3).map((h, i) => <li key={i}>{h}</li>)}
+                  {analysis.replyHints.slice(0, 4).map((h, i) => <li key={i}>{h}</li>)}
                 </ul>
               )}
               <div className="analysis-actions">
@@ -515,6 +564,11 @@ export default function Home() {
                   <span className={"intensity-badge i-" + r.intensity}>
                     {INTENSITY_LEVELS.find(l => l.key === r.intensity)?.label || r.intensity}
                   </span>
+                  {r.stance && (
+                    <span className={`stance-badge stance-${r.stance}`} title="主播内心想法：对大哥请求的立场">
+                      {r.stanceLabel}
+                    </span>
+                  )}
                 </div>
                 <div className="result-text">{r.text}</div>
               </div>
