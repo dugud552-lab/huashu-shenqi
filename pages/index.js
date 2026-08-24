@@ -534,24 +534,20 @@ export default function Home() {
 
       <div className="sys-status">
         <span className="sys-dot" />
-        <span className="sys-text">SYSTEM ONLINE</span>
+        <span className="sys-text">ONLINE</span>
+        <span className="sys-sep hide-sm">|</span>
+        <span className="sys-info hide-sm">🧠 {brothers.length} 大哥</span>
+        <span className="sys-sep hide-sm">|</span>
+        <span className="sys-info hide-xs">模板 {stats.templates.toLocaleString()}</span>
+        <span className="sys-sep hide-xs">|</span>
+        <span className="sys-info hide-xs">AI分 {stats.qualityCoverage}%</span>
         <span className="sys-sep">|</span>
-        <span className="sys-info">模板库 {stats.templates.toLocaleString()}</span>
-        <span className="sys-sep">|</span>
-        <span className="sys-info">{stats.scenarios} 场景 · {stats.personalities} 性格</span>
-        <span className="sys-sep">|</span>
-        <span className="sys-info">AI质量分 {stats.qualityCoverage}%</span>
-        <span className="sys-sep">|</span>
-        <span className="sys-info">{stats.combinationRules} 组合规则</span>
-        <span className="sys-sep">|</span>
-        <span className="sys-info">🧠 记忆 {brothers.length} 大哥</span>
-        <span className="sys-sep">|</span>
-        <span className="sys-time">{now || "--:--:--"}</span>
+        <span className="sys-time">{now || "--:--"}</span>
       </div>
 
       <div className="hero">
         <h1>私聊维护话术生成器</h1>
-        <p>NEURAL ENGINE · AI记忆系统 · 每个大哥独立聊天框 · 上下文感知</p>
+        <p className="hero-sub">AI记忆 · 每个大哥独立聊天框 · 8种性格高情商回复</p>
       </div>
 
       {/* 🧠 大哥选择器（独立会话入口） */}
